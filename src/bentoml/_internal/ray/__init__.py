@@ -26,7 +26,7 @@ try:
     from ray.serve.deployment import Deployment
 except ImportError:  # pragma: no cover
     raise MissingDependencyException(
-        """'ray[serve]' is required in order to use module 'bentoml.ray', install with 'pip install -U "ray[serve]"'. See https://docs.ray.io/ for more information.""",
+        """'ray[serve]' is required in order to use module 'bentoml.ray', install with 'pip install -U "ray[serve]"'. See https://docs.ray.io/ for more information."""
     )
 
 
@@ -40,8 +40,7 @@ def _get_runner_deployment(
     class RunnerDeployment:
         def __init__(self):
             _runner = next(
-                (runner for runner in svc.runners if runner.name == runner_name),
-                None,
+                (runner for runner in svc.runners if runner.name == runner_name), None
             )
             _runner.init_local(quiet=True)
             for method in _runner.runner_methods:
@@ -109,11 +108,7 @@ def _get_service_deployment(svc: bentoml.Service, **kwargs) -> Deployment:
 
 def get_bento_runtime_env(bento_tag: str | Tag) -> RuntimeEnv:
     # TODO: create Ray RuntimeEnv from Bento env configs
-    return RuntimeEnv(
-        pip=[],
-        conda=[],
-        env_vars=[],
-    )
+    return RuntimeEnv(pip=[], conda=[], env_vars=[])
 
 
 def _deploy_bento_runners(

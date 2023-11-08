@@ -40,8 +40,7 @@ __all__ = [
 
 
 def create_test_bento_servicer(
-    service: Service,
-    protocol_version: str = LATEST_PROTOCOL_VERSION,
+    service: Service, protocol_version: str = LATEST_PROTOCOL_VERSION
 ) -> t.Callable[[Service], t.Any]:
     try:
         module = importlib.import_module(
@@ -80,11 +79,11 @@ def make_pb_ndarray(
                 fieldpb: arr.ravel().tolist(),
                 "dtype": dtypepb,
                 "shape": tuple(arr.shape),
-            },
+            }
         )
     except KeyError:
         raise BentoMLException(
-            f"Unsupported dtype '{arr.dtype}' for response message.",
+            f"Unsupported dtype '{arr.dtype}' for response message."
         ) from None
 
 
@@ -161,8 +160,7 @@ async def async_client_call(
 
 @asynccontextmanager
 async def create_channel(
-    host_url: str,
-    interceptors: t.Sequence[aio.ClientInterceptor] | None = None,
+    host_url: str, interceptors: t.Sequence[aio.ClientInterceptor] | None = None
 ) -> t.AsyncGenerator[Channel, None]:
     """
     Create an async channel with given host_url and client interceptors.
@@ -190,8 +188,7 @@ async def create_channel(
 
 @cached_contextmanager("{interceptors}")
 def make_standalone_server(
-    interceptors: t.Sequence[aio.ServerInterceptor] | None = None,
-    host: str = "0.0.0.0",
+    interceptors: t.Sequence[aio.ServerInterceptor] | None = None, host: str = "0.0.0.0"
 ) -> t.Generator[tuple[aio.Server, str], None, None]:
     """
     Create a standalone aio.Server for testing.
@@ -235,10 +232,7 @@ def make_standalone_server(
     """
     stack = ExitStack()
     port = stack.enter_context(reserve_free_port(enable_so_reuseport=True))
-    server = aio.server(
-        interceptors=interceptors,
-        options=(("grpc.so_reuseport", 1),),
-    )
+    server = aio.server(interceptors=interceptors, options=(("grpc.so_reuseport", 1),))
     server.add_insecure_port(f"{host}:{port}")
     print("Using port %d..." % port)
     try:

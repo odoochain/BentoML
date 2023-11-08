@@ -63,10 +63,7 @@ async def test_empty_metrics():
     # This test a branch where we change inside the handler whether or not the incoming
     # handler contains pb.Request
     # if it isn't a pb.Request, then we just pass the handler, hence metrics should be empty
-    with make_standalone_server(interceptors=[interceptor]) as (
-        server,
-        host_url,
-    ):
+    with make_standalone_server(interceptors=[interceptor]) as (server, host_url):
         try:
             services_test.add_TestServiceServicer_to_server(
                 TestServiceServicer(), server
@@ -114,10 +111,7 @@ async def test_metrics_interceptors(
 
     _, services = import_generated_stubs(protocol_version)
 
-    with make_standalone_server(interceptors=[interceptor]) as (
-        server,
-        host_url,
-    ):
+    with make_standalone_server(interceptors=[interceptor]) as (server, host_url):
         services.add_BentoServiceServicer_to_server(
             create_test_bento_servicer(simple_service, protocol_version), server
         )

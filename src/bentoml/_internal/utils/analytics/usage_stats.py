@@ -100,8 +100,7 @@ def get_serve_info() -> ServeInfo:  # pragma: no cover
 
 @inject
 def get_payload(
-    event_properties: EventMeta,
-    session_id: str = Provide[BentoMLContainer.session_id],
+    event_properties: EventMeta, session_id: str = Provide[BentoMLContainer.session_id]
 ) -> t.Dict[str, t.Any]:
     return TrackingPayload(
         session_id=session_id,
@@ -189,8 +188,7 @@ def filter_metrics(
 
 
 def get_metrics_report(
-    metrics_client: PrometheusClient,
-    serve_kind: str,
+    metrics_client: PrometheusClient, serve_kind: str
 ) -> list[dict[str, str | float]]:
     """
     Get Prometheus metrics reports from the metrics client. This will be used to determine tracking events.

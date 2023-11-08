@@ -193,7 +193,7 @@ def test_json_openapi_request_responses():
 @pytest.mark.asyncio
 async def test_from_proto():
     res = await JSON().from_proto(
-        b'{"request_id": "123", "iris_features": {"sepal_len":2.34,"sepal_width":1.58, "petal_len":6.52, "petal_width":3.23}}',
+        b'{"request_id": "123", "iris_features": {"sepal_len":2.34,"sepal_width":1.58, "petal_len":6.52, "petal_width":3.23}}'
     )
     assert res == {
         "request_id": "123",
@@ -205,7 +205,7 @@ async def test_from_proto():
         },
     }
     res = await JSON(pydantic_model=BaseSchema).from_proto(
-        b'{"name":"test","endpoints":["predict","health"]}',
+        b'{"name":"test","endpoints":["predict","health"]}'
     )
     assert isinstance(res, pydantic.BaseModel) and res == BaseSchema(
         name="test", endpoints=["predict", "health"]
@@ -228,15 +228,14 @@ async def test_from_proto():
                                     )
                                 ),
                             }
-                        ),
+                        )
                     ),
                 }
             )
-        ),
+        )
     )
     assert isinstance(res, pydantic.BaseModel) and res == Nested(
-        toplevel="test",
-        nested=BaseSchema(name="test", endpoints=["predict", "health"]),
+        toplevel="test", nested=BaseSchema(name="test", endpoints=["predict", "health"])
     )
 
 

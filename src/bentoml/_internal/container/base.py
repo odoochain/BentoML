@@ -232,7 +232,5 @@ class OCIBuilder:
 
 
 FrozenOCIBuilder = type(
-    "FrozenOCIBuilder",
-    (OCIBuilder,),
-    {"__slots__": ("construct_build_args", "health")},
+    "FrozenOCIBuilder", (OCIBuilder,), {"__slots__": ("construct_build_args", "health")}
 )

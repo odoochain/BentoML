@@ -206,10 +206,7 @@ if __name__ == "__main__":
     correct, total = test_model(trained_model, test_loader, device)
 
     # training related
-    metadata = {
-        "acc": float(correct) / total,
-        "cv_stats": cv_results,
-    }
+    metadata = {"acc": float(correct) / total, "cv_stats": cv_results}
 
     signatures = {"predict": {"batchable": True}}
 

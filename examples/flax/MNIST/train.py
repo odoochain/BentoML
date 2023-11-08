@@ -236,7 +236,7 @@ if __name__ == "__main__":
             num_epochs=args.num_epochs,
             enable_tensorboard=args.enable_tensorboard,
             hermetic=args.hermetic,
-        ),
+        )
     )
 
     model = bentoml.flax.save_model("mnist_flax", CNN(), training_state)

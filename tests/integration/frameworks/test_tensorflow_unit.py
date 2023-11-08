@@ -45,16 +45,13 @@ def test_tensorflow_container(batch_axis: int):
     merged_batch = tf.concat(batch_list, batch_axis)
 
     batches, indices = TensorflowTensorContainer.batches_to_batch(
-        batch_list,
-        batch_dim=batch_axis,
+        batch_list, batch_dim=batch_axis
     )
     assert batches.shape == merged_batch.shape
     assert_tensor_equal(batches, merged_batch)
     assert_tensor_equal(
         TensorflowTensorContainer.batch_to_batches(
-            merged_batch,
-            indices=indices,
-            batch_dim=batch_axis,
+            merged_batch, indices=indices, batch_dim=batch_axis
         )[0],
         one_batch,
     )

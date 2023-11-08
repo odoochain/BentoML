@@ -18,20 +18,16 @@ CONTENT_TYPE = b"content-type"
 
 status: ContextVar[int] = ContextVar("ACCESS_LOG_STATUS_CODE")
 request_content_length: ContextVar[bytes] = ContextVar(
-    "ACCESS_LOG_REQ_CONTENT_LENGTH",
-    default=b"",
+    "ACCESS_LOG_REQ_CONTENT_LENGTH", default=b""
 )
 request_content_type: ContextVar[bytes] = ContextVar(
-    "ACCESS_LOG_REQ_CONTENT_TYPE",
-    default=b"",
+    "ACCESS_LOG_REQ_CONTENT_TYPE", default=b""
 )
 response_content_length: ContextVar[bytes] = ContextVar(
-    "ACCESS_LOG_RESP_CONTENT_LENGTH",
-    default=b"",
+    "ACCESS_LOG_RESP_CONTENT_LENGTH", default=b""
 )
 response_content_type: ContextVar[bytes] = ContextVar(
-    "ACCESS_LOG_RESP_CONTENT_TYPE",
-    default=b"",
+    "ACCESS_LOG_RESP_CONTENT_TYPE", default=b""
 )
 
 
@@ -57,10 +53,7 @@ class AccessLogMiddleware:
         self.logger = logging.getLogger("bentoml.access")
 
     async def __call__(
-        self,
-        scope: ext.ASGIScope,
-        receive: ext.ASGIReceive,
-        send: ext.ASGISend,
+        self, scope: ext.ASGIScope, receive: ext.ASGIReceive, send: ext.ASGISend
     ) -> None:
         if not scope["type"].startswith("http"):
             await self.app(scope, receive, send)

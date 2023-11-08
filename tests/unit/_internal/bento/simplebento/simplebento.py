@@ -5,7 +5,7 @@ import bentoml
 
 # iris_model_runner = bentoml.sklearn.get('iris_classifier:latest').to_runner()
 svc = bentoml.Service(
-    "test.simplebento",
+    "test.simplebento"
     # runners=[iris_model_runner]
 )
 

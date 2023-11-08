@@ -55,7 +55,7 @@ classification_model = FrameworkTestModel(
     name="classification",
     save_kwargs={
         "signatures": {
-            "predict": {"batchable": False},
+            "predict": {"batchable": False}
             # TODO: staged_predict is not supported by bentoml.catboost yet
         }
     },
@@ -64,14 +64,11 @@ classification_model = FrameworkTestModel(
         Config(
             test_inputs={
                 "predict": [
-                    Input(
-                        input_args=[X_test],
-                        expected=accurate_to(y_test, 0.9466),
-                    ),
-                ],
+                    Input(input_args=[X_test], expected=accurate_to(y_test, 0.9466))
+                ]
                 # TODO: staged_predict is not supported by bentoml.catboost yet
-            },
-        ),
+            }
+        )
     ],
 )
 

@@ -30,17 +30,14 @@ CLI_LOGGING_CONFIG: dict[str, t.Any] = {
             "filters": ["infofilter"],
             "stream": "ext://sys.stdout",
         },
-        "defaulthandler": {
-            "class": "logging.StreamHandler",
-            "level": logging.WARNING,
-        },
+        "defaulthandler": {"class": "logging.StreamHandler", "level": logging.WARNING},
     },
     "loggers": {
         "bentoml": {
             "handlers": ["bentomlhandler", "defaulthandler"],
             "level": logging.INFO,
             "propagate": False,
-        },
+        }
     },
     "root": {"level": logging.WARNING},
 }
@@ -54,30 +51,22 @@ DATE_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 SERVER_LOGGING_CONFIG: dict[str, t.Any] = {
     "version": 1,
     "disable_existing_loggers": True,
-    "formatters": {
-        "traced": {
-            "format": TRACED_LOG_FORMAT,
-            "datefmt": DATE_FORMAT,
-        }
-    },
+    "formatters": {"traced": {"format": TRACED_LOG_FORMAT, "datefmt": DATE_FORMAT}},
     "handlers": {
         "tracehandler": {
             "class": "logging.StreamHandler",
             "formatter": "traced",
             "stream": "ext://sys.stdout",
-        },
+        }
     },
     "loggers": {
         "bentoml": {
             "level": logging.INFO,
             "handlers": ["tracehandler"],
             "propagate": False,
-        },
+        }
     },
-    "root": {
-        "handlers": ["tracehandler"],
-        "level": logging.WARNING,
-    },
+    "root": {"handlers": ["tracehandler"], "level": logging.WARNING},
 }
 
 

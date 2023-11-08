@@ -56,11 +56,7 @@ class AsyncHTTPClient(AsyncClient):
                         break
                     else:
                         await asyncio.sleep(check_interval)
-            except (
-                httpx.TimeoutException,
-                httpx.NetworkError,
-                httpx.HTTPStatusError,
-            ):
+            except (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPStatusError):
                 logger.debug("Server is not ready. Retrying...")
                 await asyncio.sleep(check_interval)
 
@@ -208,11 +204,7 @@ class SyncHTTPClient(SyncClient):
                     break
                 else:
                     time.sleep(check_interval)
-            except (
-                httpx.TimeoutException,
-                httpx.NetworkError,
-                httpx.HTTPStatusError,
-            ):
+            except (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPStatusError):
                 logger.debug("Server is not ready. Retrying...")
 
         # try to connect one more time and raise exception.

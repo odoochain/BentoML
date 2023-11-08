@@ -312,7 +312,7 @@ def create(
             ModelSaveEvent(
                 module=res.info.module,
                 model_size_in_kb=calc_dir_size(res.path_of("/")) / 1024,
-            ),
+            )
         )
     finally:
         res.exit_cloudpickle_context(imported_modules)

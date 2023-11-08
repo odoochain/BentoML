@@ -167,8 +167,7 @@ def construct_build_args(
                 )
             else:
                 cmds.construct_args(
-                    tuple(map(lambda tg: f"type=oci,name={tg}", tag)),
-                    opt="output",
+                    tuple(map(lambda tg: f"type=oci,name={tg}", tag)), opt="output"
                 )
     else:
         logger.info(

@@ -33,8 +33,7 @@ TRACING_CFG = {
     },
     "jaeger": {
         "protocol": s.Or(
-            s.And(str, s.Use(str.lower), lambda d: d in ["thrift", "grpc"]),
-            None,
+            s.And(str, s.Use(str.lower), lambda d: d in ["thrift", "grpc"]), None
         ),
         "collector_endpoint": s.Or(str, None),
         "thrift": {
@@ -42,9 +41,7 @@ TRACING_CFG = {
             "agent_port": s.Or(int, None),
             "udp_split_oversized_batches": s.Or(bool, None),
         },
-        "grpc": {
-            "insecure": s.Or(bool, None),
-        },
+        "grpc": {"insecure": s.Or(bool, None)},
     },
     "otlp": {
         "protocol": s.Or(s.And(str, s.Use(str.lower), validate_otlp_protocol), None),
@@ -52,10 +49,7 @@ TRACING_CFG = {
         "compression": s.Or(
             s.And(str, lambda d: d in {"gzip", "none", "deflate"}), None
         ),
-        "http": {
-            "certificate_file": s.Or(str, None),
-            "headers": s.Or(dict, None),
-        },
+        "http": {"certificate_file": s.Or(str, None), "headers": s.Or(dict, None)},
         "grpc": {
             "insecure": s.Or(bool, None),
             "headers": s.Or(lambda d: isinstance(d, t.Sequence), None),
@@ -89,11 +83,8 @@ _API_SERVER_CONFIG = {
             "request_content_type": s.Or(bool, None),
             "response_content_length": s.Or(bool, None),
             "response_content_type": s.Or(bool, None),
-            "format": {
-                "trace_id": str,
-                "span_id": str,
-            },
-        },
+            "format": {"trace_id": str, "span_id": str},
+        }
     },
     "http": {
         "host": s.And(str, is_valid_ip_address),
@@ -135,11 +126,7 @@ _API_SERVER_CONFIG = {
         s.Optional("ca_certs"): s.Or(str, None),
         s.Optional("ciphers"): s.Or(str, None),
     },
-    "runner_probe": {
-        "enabled": bool,
-        "timeout": int,
-        "period": int,
-    },
+    "runner_probe": {"enabled": bool, "timeout": int, "period": int},
 }
 _RUNNER_CONFIG = {
     s.Optional("batching"): {
@@ -149,7 +136,9 @@ _RUNNER_CONFIG = {
     },
     # NOTE: there is a distinction between being unset and None here; if set to 'None'
     # in configuration for a specific runner, it will override the global configuration.
-    s.Optional("resources"): s.Or({s.Optional(str): object}, lambda s: s == "system", None),  # type: ignore (incomplete schema typing)
+    s.Optional("resources"): s.Or(
+        {s.Optional(str): object}, lambda s: s == "system", None
+    ),  # type: ignore (incomplete schema typing)
     s.Optional("workers_per_resource"): s.And(
         s.Or(int, float), ensure_larger_than_zero
     ),
@@ -160,12 +149,9 @@ _RUNNER_CONFIG = {
             s.Optional("request_content_type"): s.Or(bool, None),
             s.Optional("response_content_length"): s.Or(bool, None),
             s.Optional("response_content_type"): s.Or(bool, None),
-        },
+        }
     },
-    s.Optional("metrics"): {
-        "enabled": bool,
-        "namespace": str,
-    },
+    s.Optional("metrics"): {"enabled": bool, "namespace": str},
     s.Optional("traffic"): {
         "timeout": s.And(int, ensure_larger_than_zero),
         "max_concurrency": s.Or(s.And(int, ensure_larger_than_zero), None),
@@ -175,10 +161,7 @@ SCHEMA = s.Schema(
     {
         s.Optional("version", default=1): s.And(int, lambda v: v == 1),
         "api_server": _API_SERVER_CONFIG,
-        "runners": {
-            **_RUNNER_CONFIG,
-            s.Optional(str): _RUNNER_CONFIG,
-        },
+        "runners": {**_RUNNER_CONFIG, s.Optional(str): _RUNNER_CONFIG},
         "tracing": TRACING_CFG,
         s.Optional("monitoring"): {
             "enabled": bool,
@@ -246,9 +229,7 @@ def migration(*, override_config: dict[str, t.Any]):
     # 5. migrate all tracing fields to api_server.tracing
     # 5.1. migrate tracing.type -> api_server.tracing.expoerter_type
     rename_fields(
-        override_config,
-        current="tracing.type",
-        replace_with="tracing.exporter_type",
+        override_config, current="tracing.type", replace_with="tracing.exporter_type"
     )
     # 5.2. for Zipkin and OTLP, migrate tracing.[exporter].url -> api_server.tracing.[exporter].endpoint
     for exporter in ["zipkin", "otlp"]:

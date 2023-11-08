@@ -162,10 +162,7 @@ async def test_file(host: str, bin_file: str):
     form.add_field("file", b, content_type="application/octet-stream")
 
     await async_request(
-        "POST",
-        f"http://{host}/predict_file",
-        data=form,
-        assert_data=b"\x810\x899",
+        "POST", f"http://{host}/predict_file", data=form, assert_data=b"\x810\x899"
     )
 
     await async_request(

@@ -93,7 +93,7 @@ def gen_task_pipeline(
 
 
 def expected_equal(
-    expected: list[AnyDict | AnyList],
+    expected: list[AnyDict | AnyList]
 ) -> t.Callable[[list[AnyDict | AnyList]], bool]:
     def check_output(out: list[AnyDict | AnyList]) -> bool:
         return nested_simplify(out, decimals=4) == expected
@@ -116,9 +116,9 @@ text_classification_pipeline: list[Model] = [
                                 [{"label": "LABEL_0", "score": 0.5036}]
                             ),
                         )
-                    ],
+                    ]
                 },
-            ),
+            )
         ],
     )
     for model in gen_task_pipeline(model=TINY_TEXT_MODEL, task=TINY_TEXT_TASK)
@@ -128,11 +128,7 @@ batched_pipeline: list[Model] = [
     Model(
         name="batchable-text-classification-pipeline",
         model=model,
-        save_kwargs={
-            "signatures": {
-                "__call__": {"batchable": True},
-            }
-        },
+        save_kwargs={"signatures": {"__call__": {"batchable": True}}},
         configurations=[
             Config(
                 load_kwargs={"task": TINY_TEXT_TASK},
@@ -177,7 +173,7 @@ image_classification: list[Model] = [
                                 [
                                     {
                                         "generated_text": "growthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthGOGO"
-                                    },
+                                    }
                                 ]
                             ],
                         ),
@@ -189,13 +185,13 @@ image_classification: list[Model] = [
                                 [
                                     {
                                         "generated_text": "growthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthgrowthGOGO"
-                                    },
+                                    }
                                 ]
                             ],
                         ),
-                    ],
+                    ]
                 },
-            ),
+            )
         ],
     )
     for model in gen_task_pipeline(model=tiny_image_model, task=tiny_image_task)
@@ -270,10 +266,10 @@ custom_pipeline: list[Model] = [
                             )
                             == 0.5036,
                         ),
-                    ],
+                    ]
                 },
                 check_model=check_model,
-            ),
+            )
         ],
     )
     for model in gen_task_pipeline(
@@ -401,7 +397,7 @@ gpt2_pretrained: list[Model] = [
                 }
             )
         ],
-    ),
+    )
 ]
 
 dataset = load_dataset("huggingface/cats-image")
@@ -490,7 +486,7 @@ vit_pretrained: list[Model] = [
                 }
             )
         ],
-    ),
+    )
 ]
 
 

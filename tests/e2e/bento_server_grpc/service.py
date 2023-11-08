@@ -89,10 +89,7 @@ async def echo_json(json_obj: JSONSerializable) -> JSONSerializable:
     return batched[0]
 
 
-@svc.api(
-    input=JSON(pydantic_model=IrisClassificationRequest),
-    output=JSON(),
-)
+@svc.api(input=JSON(pydantic_model=IrisClassificationRequest), output=JSON())
 def echo_json_validate(input_data: IrisClassificationRequest) -> dict[str, float]:
     print("request_id: ", input_data.request_id)
     return input_data.iris_features.dict()

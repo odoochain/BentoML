@@ -123,7 +123,9 @@ class Runner(AbstractRunner):
         # the following annotations hacks around the fact that Runner does not
         # have information about signatures at runtime.
         @t.overload
-        def __getattr__(self, item: t.Literal["__attrs_init__"]) -> t.Callable[..., None]:  # type: ignore
+        def __getattr__(
+            self, item: t.Literal["__attrs_init__"]
+        ) -> t.Callable[..., None]:  # type: ignore
             ...
 
         @t.overload
@@ -339,9 +341,7 @@ class Runner(AbstractRunner):
     @property
     def scheduled_worker_count(self) -> int:
         return self.scheduling_strategy.get_worker_count(
-            self.runnable_class,
-            self.resource_config,
-            self.workers_per_resource,
+            self.runnable_class, self.resource_config, self.workers_per_resource
         )
 
     @property

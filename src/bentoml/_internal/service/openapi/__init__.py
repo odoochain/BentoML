@@ -104,9 +104,7 @@ def generate_spec(svc: Service, *, openapi_version: str = "3.0.2"):
             from fastapi.openapi.utils import get_openapi
 
             openapi = get_openapi(
-                title=app.title,
-                version=app.version,
-                routes=app.routes,
+                title=app.title, version=app.version, routes=app.routes
             )
 
             mounted_app_paths.update(
@@ -168,7 +166,7 @@ def generate_spec(svc: Service, *, openapi_version: str = "3.0.2"):
                         "description": api.doc or "",
                         "requestBody": api.input.openapi_request_body(),
                         "operationId": f"{svc.name}__{api.name}",
-                    },
+                    }
                 )
                 for api in svc.apis.values()
             },

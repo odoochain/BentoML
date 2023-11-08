@@ -60,8 +60,8 @@ diffusers_model = FrameworkTestModel(
                         },
                         expected=check_output,
                     )
-                ],
-            },
+                ]
+            }
         ),
         Config(
             test_inputs={
@@ -96,8 +96,8 @@ diffusers_model = FrameworkTestModel(
                         ],
                         expected=check_replace_scheduler_factory(replace_success),
                     ),
-                ],
-            },
+                ]
+            }
         ),
     ],
 )

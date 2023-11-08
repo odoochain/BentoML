@@ -588,10 +588,7 @@ class BentoInfo:
 bentoml_cattr.register_structure_hook_func(
     lambda cls: issubclass(cls, BentoInfo),
     make_dict_structure_fn(
-        BentoInfo,
-        bentoml_cattr,
-        name=override(omit=True),
-        version=override(omit=True),
+        BentoInfo, bentoml_cattr, name=override(omit=True), version=override(omit=True)
     ),
 )
 bentoml_cattr.register_unstructure_hook(

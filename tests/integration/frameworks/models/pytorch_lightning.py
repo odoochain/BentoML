@@ -36,14 +36,9 @@ models = [
         configurations=[
             Config(
                 test_inputs={
-                    "__call__": [
-                        Input(
-                            input_args=[x],
-                            expected=lambda out: out == 5,
-                        )
-                    ],
-                },
-            ),
+                    "__call__": [Input(input_args=[x], expected=lambda out: out == 5)]
+                }
+            )
         ],
     )
     for model in generate_models()

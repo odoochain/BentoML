@@ -9,9 +9,7 @@ if TYPE_CHECKING:
 
 
 def _cli_bentoml_build_event(
-    cmd_group: str,
-    cmd_name: str,
-    return_value: "t.Optional[Bento]",
+    cmd_group: str, cmd_name: str, return_value: "t.Optional[Bento]"
 ) -> BentoBuildEvent:  # pragma: no cover
     if return_value is not None:
         bento = return_value
@@ -27,10 +25,7 @@ def _cli_bentoml_build_event(
             runnable_types=[r.runnable_type for r in bento.info.runners],
         )
     else:
-        return BentoBuildEvent(
-            cmd_group=cmd_group,
-            cmd_name=cmd_name,
-        )
+        return BentoBuildEvent(cmd_group=cmd_group, cmd_name=cmd_name)
 
 
 cli_events_map = {"cli": {"build": _cli_bentoml_build_event}}

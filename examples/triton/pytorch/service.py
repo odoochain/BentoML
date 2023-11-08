@@ -15,16 +15,12 @@ if t.TYPE_CHECKING:
 triton_runner = bentoml.triton.Runner(
     "triton_runner",
     "./model_repository",
-    cli_args=[
-        "--model-control-mode=explicit",
-        "--load-model=torchscript_yolov5s",
-    ],
+    cli_args=["--model-control-mode=explicit", "--load-model=torchscript_yolov5s"],
 )
 bentoml_yolov5_torchscript = bentoml.torchscript.get("torchscript-yolov5").to_runner()
 
 svc = bentoml.Service(
-    "triton-integration-pytorch",
-    runners=[triton_runner, bentoml_yolov5_torchscript],
+    "triton-integration-pytorch", runners=[triton_runner, bentoml_yolov5_torchscript]
 )
 
 
@@ -42,8 +38,7 @@ async def bentoml_torchscript_yolov5_infer(fp: Image) -> dict[str, str]:
 
 ### Triton YOLOv5
 @svc.api(
-    input=bentoml.io.Image.from_sample("./data/zidane.jpg"),
-    output=bentoml.io.JSON(),
+    input=bentoml.io.Image.from_sample("./data/zidane.jpg"), output=bentoml.io.JSON()
 )
 async def triton_torchscript_yolov5_infer(im: Image) -> dict[str, str]:
     prep = helpers.prepare_yolov5_input(

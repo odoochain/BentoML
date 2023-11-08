@@ -37,14 +37,10 @@ pickle_model = FrameworkTestModel(
     configurations=[
         Config(
             test_inputs={
-                "predict": [
-                    Input(input_args=[4], expected=np.array([16])),
-                ],
-                "batch_predict": [
-                    Input(input_args=[[3, 9]], expected=[9, 81]),
-                ],
-            },
-        ),
+                "predict": [Input(input_args=[4], expected=np.array([16]))],
+                "batch_predict": [Input(input_args=[[3, 9]], expected=[9, 81])],
+            }
+        )
     ],
 )
 

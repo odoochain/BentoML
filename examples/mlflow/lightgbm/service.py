@@ -8,10 +8,7 @@ lgb_iris_runner = bentoml.mlflow.get("lgb_iris:latest").to_runner()
 svc = bentoml.Service("lgb_iris_service", runners=[lgb_iris_runner])
 
 input_spec = NumpyNdarray(
-    dtype="float64",
-    enforce_dtype=True,
-    shape=(-1, 4),
-    enforce_shape=True,
+    dtype="float64", enforce_dtype=True, shape=(-1, 4), enforce_shape=True
 )
 
 

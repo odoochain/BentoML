@@ -94,10 +94,7 @@ class BentoMLConfiguration:
                 "Applying user config override from ENV VAR: %s", override_config_values
             )
             lines = split_with_quotes(
-                override_config_values,
-                sep=r"\s+",
-                quote='"',
-                use_regex=True,
+                override_config_values, sep=r"\s+", quote='"', use_regex=True
             )
             override_config_map = {
                 k: yaml.safe_load(v)
@@ -154,8 +151,7 @@ class BentoMLConfiguration:
         global_runner_cfg = {k: self.config["runners"][k] for k in RUNNER_CFG_KEYS}
         custom_runners_cfg = dict(
             filter(
-                lambda kv: kv[0] not in RUNNER_CFG_KEYS,
-                self.config["runners"].items(),
+                lambda kv: kv[0] not in RUNNER_CFG_KEYS, self.config["runners"].items()
             )
         )
         if custom_runners_cfg:
@@ -164,8 +160,7 @@ class BentoMLConfiguration:
                 if runner_cfg.get("resources") == "system":
                     runner_cfg["resources"] = system_resources()
                 self.config["runners"][runner_name] = config_merger.merge(
-                    deepcopy(global_runner_cfg),
-                    runner_cfg,
+                    deepcopy(global_runner_cfg), runner_cfg
                 )
         expand_env_var_in_values(self.config)
 
@@ -290,22 +285,23 @@ class _BentoMLContainerClass:
     @providers.SingletonFactory
     @staticmethod
     def access_control_options(
-        allow_origins: list[str]
-        | str
-        | None = Provide[cors.access_control_allow_origins],
-        allow_origin_regex: str
-        | None = Provide[cors.access_control_allow_origin_regex],
+        allow_origins: list[str] | str | None = Provide[
+            cors.access_control_allow_origins
+        ],
+        allow_origin_regex: str | None = Provide[
+            cors.access_control_allow_origin_regex
+        ],
         allow_credentials: bool | None = Provide[cors.access_control_allow_credentials],
-        allow_methods: list[str]
-        | str
-        | None = Provide[cors.access_control_allow_methods],
-        allow_headers: list[str]
-        | str
-        | None = Provide[cors.access_control_allow_headers],
+        allow_methods: list[str] | str | None = Provide[
+            cors.access_control_allow_methods
+        ],
+        allow_headers: list[str] | str | None = Provide[
+            cors.access_control_allow_headers
+        ],
         max_age: int | None = Provide[cors.access_control_max_age],
-        expose_headers: list[str]
-        | str
-        | None = Provide[cors.access_control_expose_headers],
+        expose_headers: list[str] | str | None = Provide[
+            cors.access_control_expose_headers
+        ],
     ) -> dict[str, list[str] | str | int]:
         if isinstance(allow_origins, str):
             allow_origins = [allow_origins]
@@ -333,15 +329,13 @@ class _BentoMLContainerClass:
     )
 
     prometheus_multiproc_dir = providers.Factory[str](
-        os.path.join,
-        bentoml_home,
-        "prometheus_multiproc_dir",
+        os.path.join, bentoml_home, "prometheus_multiproc_dir"
     )
 
     @providers.SingletonFactory
     @staticmethod
     def metrics_client(
-        multiproc_dir: str = Provide[prometheus_multiproc_dir],
+        multiproc_dir: str = Provide[prometheus_multiproc_dir]
     ) -> PrometheusClient:
         from ..server.metrics.prometheus import PrometheusClient
 
@@ -460,7 +454,7 @@ class _BentoMLContainerClass:
     @providers.SingletonFactory
     @staticmethod
     def tracing_excluded_urls(
-        excluded_urls: str | list[str] | None = Provide[tracing.excluded_urls],
+        excluded_urls: str | list[str] | None = Provide[tracing.excluded_urls]
     ):
         from opentelemetry.util.http import ExcludeList
         from opentelemetry.util.http import parse_excluded_urls
@@ -503,7 +497,7 @@ class _BentoMLContainerClass:
     @providers.SingletonFactory
     @staticmethod
     def logging_formatting(
-        cfg: dict[str, t.Any] = Provide[api_server_config.logging.access.format],
+        cfg: dict[str, t.Any] = Provide[api_server_config.logging.access.format]
     ) -> dict[str, str]:
         return cfg
 

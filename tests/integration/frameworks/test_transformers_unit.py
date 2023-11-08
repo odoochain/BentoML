@@ -83,11 +83,7 @@ def test_raise_different_default_definition(
         "impl": AudioClassificationPipeline,
         "tf": (),
         "pt": (AutoModelForAudioClassification,),
-        "default": {
-            "model": {
-                "pt": ("hf-internal-testing/tiny-random-distilbert",),
-            },
-        },
+        "default": {"model": {"pt": ("hf-internal-testing/tiny-random-distilbert",)}},
         "type": "text",
     }
 

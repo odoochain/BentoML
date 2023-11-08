@@ -189,9 +189,7 @@ class RunnerAppFactory(BaseAppFactory):
         return middlewares
 
     def _mk_request_handler(
-        self,
-        runner_method: RunnerMethod[t.Any, t.Any, t.Any],
-        batching: bool = True,
+        self, runner_method: RunnerMethod[t.Any, t.Any, t.Any], batching: bool = True
     ) -> t.Callable[[Request], t.Coroutine[None, None, Response]]:
         from starlette.responses import Response
 
@@ -200,7 +198,7 @@ class RunnerAppFactory(BaseAppFactory):
         if runner_method.config.is_stream:
             # Streaming does not have batching implemented yet
             async def infer_stream(
-                paramss: t.Sequence[Params[t.Any]],
+                paramss: t.Sequence[Params[t.Any]]
             ) -> t.Sequence[t.AsyncGenerator[Payload, None]]:
                 async def inner():
                     # This is a workaround to allow infer stream to return a iterable of
@@ -222,7 +220,7 @@ class RunnerAppFactory(BaseAppFactory):
             if batching:
 
                 async def infer_batch(
-                    params_list: t.Sequence[Params[t.Any]],
+                    params_list: t.Sequence[Params[t.Any]]
                 ) -> list[Payload] | list[tuple[Payload, ...]]:
                     self.adaptive_batch_size_hist.labels(  # type: ignore
                         runner_name=self.runner.name,
@@ -263,9 +261,7 @@ class RunnerAppFactory(BaseAppFactory):
 
                     # single output branch
                     payloads = AutoContainer.batch_to_payloads(
-                        batch_ret,
-                        indices,
-                        batch_dim=output_batch_dim,
+                        batch_ret, indices, batch_dim=output_batch_dim
                     )
                     return payloads
 
@@ -378,12 +374,7 @@ def _deserialize_single_param(request: Request, bs: bytes) -> Params[t.Any]:
     meta = json.loads(request.headers["Payload-Meta"])
     batch_size = int(request.headers["Batch-Size"])
     kwarg_name = request.headers.get("Kwarg-Name")
-    payload = Payload(
-        data=bs,
-        meta=meta,
-        batch_size=batch_size,
-        container=container,
-    )
+    payload = Payload(data=bs, meta=meta, batch_size=batch_size, container=container)
     if kwarg_name:
         d = {kwarg_name: payload}
         params: Params[t.Any] = Params(**d)

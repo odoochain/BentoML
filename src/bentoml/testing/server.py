@@ -117,11 +117,7 @@ async def server_warmup(
                     return True
                 else:
                     await asyncio.sleep(check_interval)
-            except (
-                ConnectionError,
-                urllib.error.URLError,
-                socket.timeout,
-            ) as e:
+            except (ConnectionError, urllib.error.URLError, socket.timeout) as e:
                 print(f"[{e}] Retrying to connect to the host {host_url}...")
                 await asyncio.sleep(check_interval)
     print(f"Timed out waiting {timeout} seconds for Server {host_url} to be ready.")
@@ -226,11 +222,7 @@ def run_bento_server_container(
     serve_cmd = "serve-grpc" if use_grpc else "serve-http"
     cmd.extend([serve_cmd])
     print(f"Running API server in container: '{' '.join(cmd)}'")
-    with subprocess.Popen(
-        cmd,
-        stdin=subprocess.PIPE,
-        encoding="utf-8",
-    ) as proc:
+    with subprocess.Popen(cmd, stdin=subprocess.PIPE, encoding="utf-8") as proc:
         try:
             host_url = f"{host}:{port}"
             if asyncio.run(
@@ -281,12 +273,7 @@ def run_bento_server_standalone(
             cmd += ["--host", f"{host}"]
     cmd += [bento]
     print(f"Running command: '{' '.join(cmd)}'")
-    p = subprocess.Popen(
-        cmd,
-        stderr=subprocess.STDOUT,
-        env=copied,
-        encoding="utf-8",
-    )
+    p = subprocess.Popen(cmd, stderr=subprocess.STDOUT, env=copied, encoding="utf-8")
     try:
         host_url = f"{host}:{server_port}"
         assert asyncio.run(
@@ -356,10 +343,7 @@ def run_bento_server_distributed(
             print(f"Running command: '{' '.join(cmd)}'")
         processes.append(
             subprocess.Popen(
-                cmd,
-                encoding="utf-8",
-                stderr=subprocess.STDOUT,
-                env=copied,
+                cmd, encoding="utf-8", stderr=subprocess.STDOUT, env=copied
             )
         )
     runner_args = [
@@ -382,12 +366,7 @@ def run_bento_server_distributed(
         cmd.extend(["--port", f"{server_port}"])
     print(f"Running command: '{' '.join(cmd)}'")
     processes.append(
-        subprocess.Popen(
-            cmd,
-            stderr=subprocess.STDOUT,
-            encoding="utf-8",
-            env=copied,
-        )
+        subprocess.Popen(cmd, stderr=subprocess.STDOUT, encoding="utf-8", env=copied)
     )
     try:
         host_url = f"{host}:{server_port}"

@@ -139,13 +139,12 @@ onnx_pytorch_model = FrameworkTestModel(
             test_inputs={
                 "run": [
                     Input(
-                        input_args=[pytorch_input],
-                        expected=close_to(pytorch_expected),
-                    ),
-                ],
+                        input_args=[pytorch_input], expected=close_to(pytorch_expected)
+                    )
+                ]
             },
             check_model=check_model,
-        ),
+        )
     ],
 )
 
@@ -208,11 +207,11 @@ onnx_rf_model = FrameworkTestModel(
                     Input(
                         input_args=[rf_input],
                         expected=gen_rf_output_checker(rf_expected_output),
-                    ),
-                ],
+                    )
+                ]
             },
             check_model=check_model,
-        ),
+        )
     ],
 )
 
@@ -263,16 +262,9 @@ for labels, tensor_type in [
         model_signatures={"run": {"batchable": True}},
         configurations=[
             Config(
-                test_inputs={
-                    "run": [
-                        Input(
-                            input_args=[le_input],
-                            expected=_check,
-                        ),
-                    ],
-                },
+                test_inputs={"run": [Input(input_args=[le_input], expected=_check)]},
                 check_model=check_model,
-            ),
+            )
         ],
     )
     onnx_le_models.append(onnx_le_model)

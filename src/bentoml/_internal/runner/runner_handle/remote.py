@@ -42,16 +42,10 @@ else:
     P = t.TypeVar("P")
 
     tritongrpcclient = LazyLoader(
-        "tritongrpcclient",
-        globals(),
-        "tritonclient.grpc.aio",
-        exc_msg=TRITON_EXC_MSG,
+        "tritongrpcclient", globals(), "tritonclient.grpc.aio", exc_msg=TRITON_EXC_MSG
     )
     tritonhttpclient = LazyLoader(
-        "tritonhttpclient",
-        globals(),
-        "tritonclient.http.aio",
-        exc_msg=TRITON_EXC_MSG,
+        "tritonhttpclient", globals(), "tritonclient.http.aio", exc_msg=TRITON_EXC_MSG
     )
 
 logger = logging.getLogger(__name__)
@@ -214,9 +208,7 @@ class RemoteRunnerClient(RunnerHandle):
         async with self._semaphore:
             try:
                 async with self._client.post(
-                    f"{self._addr}/{path}",
-                    data=data,
-                    headers=headers,
+                    f"{self._addr}/{path}", data=data, headers=headers
                 ) as resp:
                     body = await resp.read()
             except aiohttp.ClientOSError as e:
@@ -225,9 +217,7 @@ class RemoteRunnerClient(RunnerHandle):
                         # most likely the TCP connection has been closed; retry after reconnecting
                         await self._reset_client()
                         async with self._client.post(
-                            f"{self._addr}/{path}",
-                            data=data,
-                            headers=headers,
+                            f"{self._addr}/{path}", data=data, headers=headers
                         ) as resp:
                             body = await resp.read()
                     except aiohttp.ClientOSError:
@@ -322,9 +312,7 @@ class RemoteRunnerClient(RunnerHandle):
 
         try:
             async with self._client.post(
-                f"{self._addr}/{path}",
-                data=data,
-                headers=headers,
+                f"{self._addr}/{path}", data=data, headers=headers
             ) as resp:
                 buffer = bytearray()
                 async for b, end_of_http_chunk in resp.content.iter_chunks():
@@ -491,7 +479,7 @@ class TritonRunnerHandle(RunnerHandle):
 
     @property
     def client(
-        self,
+        self
     ) -> (
         tritongrpcclient.InferenceServerClient | tritonhttpclient.InferenceServerClient
     ):
@@ -511,8 +499,8 @@ class TritonRunnerHandle(RunnerHandle):
     ) -> tritongrpcclient.InferResult | tritonhttpclient.InferResult:
         from ..container import AutoContainer
 
-        assert (len(args) == 0) ^ (
-            len(kwargs) == 0
+        assert (
+            (len(args) == 0) ^ (len(kwargs) == 0)
         ), f"Inputs for model '{__bentoml_method.name}' can be given either as positional (args) or keyword arguments (kwargs), but not both. See https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#model-configuration"
 
         pass_args = args if len(args) > 0 else kwargs
@@ -575,9 +563,7 @@ class TritonRunnerHandle(RunnerHandle):
         import anyio
 
         return anyio.from_thread.run(
-            functools.partial(self.async_run_method, **kwargs),
-            __bentoml_method,
-            *args,
+            functools.partial(self.async_run_method, **kwargs), __bentoml_method, *args
         )
 
     @handle_triton_exception

@@ -71,9 +71,7 @@ def load_model(
     weight_file = bentoml_model.path_of(MODEL_FILENAME)
 
     model: torch.ScriptModule = torch.jit.load(
-        weight_file,
-        map_location=device_id,
-        _extra_files=_extra_files,
+        weight_file, map_location=device_id, _extra_files=_extra_files
     )
     return model
 
@@ -134,8 +132,7 @@ def save_model(
         framework_versions = {"torch": get_pkg_version("torch")}
 
     context: ModelContext = ModelContext(
-        framework_name=_framework_name,
-        framework_versions=framework_versions,
+        framework_name=_framework_name, framework_versions=framework_versions
     )
     if _extra_files is not None:
         if metadata is None:
@@ -178,9 +175,7 @@ def get_runnable(bento_model: Model):
 
     partial_kwargs: t.Dict[str, t.Any] = bento_model.info.options.partial_kwargs  # type: ignore
     model_runnable_class = partial_class(
-        PytorchModelRunnable,
-        bento_model=bento_model,
-        loader=load_model,
+        PytorchModelRunnable, bento_model=bento_model, loader=load_model
     )
 
     for method_name, options in bento_model.info.signatures.items():

@@ -112,9 +112,7 @@ class DataContainer(t.Generic[SingleType, BatchType]):
 
     @classmethod
     def to_triton_http_payload(
-        cls,
-        inp: SingleType,
-        meta: dict[str, t.Any],
+        cls, inp: SingleType, meta: dict[str, t.Any]
     ) -> tritonhttpclient.InferInput:
         """
         Convert given input types to a Triton payload via HTTP client.
@@ -216,9 +214,7 @@ class TritonInferInputDataContainer(
     @classmethod
     @abc.abstractmethod
     def from_batch_payloads(
-        cls,
-        payloads: t.Sequence[Payload],
-        batch_dim: int,
+        cls, payloads: t.Sequence[Payload], batch_dim: int
     ) -> tuple[tritongrpcclient.InferInput | tritonhttpclient.InferInput, list[int]]:
         raise NotImplementedError
 
@@ -226,9 +222,7 @@ class TritonInferInputDataContainer(
 class NdarrayContainer(DataContainer["ext.NpNDArray", "ext.NpNDArray"]):
     @classmethod
     def batches_to_batch(
-        cls,
-        batches: t.Sequence[ext.NpNDArray],
-        batch_dim: int = 0,
+        cls, batches: t.Sequence[ext.NpNDArray], batch_dim: int = 0
     ) -> tuple[ext.NpNDArray, list[int]]:
         # numpy.concatenate may consume lots of memory, need optimization later
         batch: ext.NpNDArray = np.concatenate(batches, axis=batch_dim)
@@ -240,10 +234,7 @@ class NdarrayContainer(DataContainer["ext.NpNDArray", "ext.NpNDArray"]):
 
     @classmethod
     def batch_to_batches(
-        cls,
-        batch: ext.NpNDArray,
-        indices: t.Sequence[int],
-        batch_dim: int = 0,
+        cls, batch: ext.NpNDArray, indices: t.Sequence[int], batch_dim: int = 0
     ) -> list[ext.NpNDArray]:
         return np.split(batch, indices[1:-1], axis=batch_dim)
 
@@ -261,9 +252,7 @@ class NdarrayContainer(DataContainer["ext.NpNDArray", "ext.NpNDArray"]):
 
     @classmethod
     def to_triton_http_payload(
-        cls,
-        inp: ext.NpNDArray,
-        meta: dict[str, t.Any],
+        cls, inp: ext.NpNDArray, meta: dict[str, t.Any]
     ) -> tritonhttpclient.InferInput:
         InferInput = tritonhttpclient.InferInput(
             meta["name"], inp.shape, tritonhttpclient.np_to_triton_dtype(inp.dtype)
@@ -272,11 +261,7 @@ class NdarrayContainer(DataContainer["ext.NpNDArray", "ext.NpNDArray"]):
         return InferInput
 
     @classmethod
-    def to_payload(
-        cls,
-        batch: ext.NpNDArray,
-        batch_dim: int,
-    ) -> Payload:
+    def to_payload(cls, batch: ext.NpNDArray, batch_dim: int) -> Payload:
         # skip 0-dimensional array
         if batch.shape:
             if not (batch.flags["C_CONTIGUOUS"] or batch.flags["F_CONTIGUOUS"]):
@@ -292,24 +277,15 @@ class NdarrayContainer(DataContainer["ext.NpNDArray", "ext.NpNDArray"]):
             return cls.create_payload(
                 concat_buffer_bs,
                 batch.shape[batch_dim],
-                {
-                    "format": "pickle5",
-                    "pickle_bytes_str": bs_str,
-                    "indices": indices,
-                },
+                {"format": "pickle5", "pickle_bytes_str": bs_str, "indices": indices},
             )
 
         return cls.create_payload(
-            pickle.dumps(batch),
-            batch.shape[batch_dim],
-            {"format": "default"},
+            pickle.dumps(batch), batch.shape[batch_dim], {"format": "default"}
         )
 
     @classmethod
-    def from_payload(
-        cls,
-        payload: Payload,
-    ) -> ext.NpNDArray:
+    def from_payload(cls, payload: Payload) -> ext.NpNDArray:
         format = payload.meta.get("format", "default")
         if format == "pickle5":
             bs_str = t.cast(str, payload.meta["pickle_bytes_str"])
@@ -321,10 +297,7 @@ class NdarrayContainer(DataContainer["ext.NpNDArray", "ext.NpNDArray"]):
 
     @classmethod
     def batch_to_payloads(
-        cls,
-        batch: ext.NpNDArray,
-        indices: t.Sequence[int],
-        batch_dim: int = 0,
+        cls, batch: ext.NpNDArray, indices: t.Sequence[int], batch_dim: int = 0
     ) -> list[Payload]:
         batches = cls.batch_to_batches(batch, indices, batch_dim)
 
@@ -333,9 +306,7 @@ class NdarrayContainer(DataContainer["ext.NpNDArray", "ext.NpNDArray"]):
 
     @classmethod
     def from_batch_payloads(
-        cls,
-        payloads: t.Sequence[Payload],
-        batch_dim: int = 0,
+        cls, payloads: t.Sequence[Payload], batch_dim: int = 0
     ) -> t.Tuple["ext.NpNDArray", list[int]]:
         batches = [cls.from_payload(payload) for payload in payloads]
         return cls.batches_to_batch(batches, batch_dim)
@@ -346,9 +317,7 @@ class PandasDataFrameContainer(
 ):
     @classmethod
     def batches_to_batch(
-        cls,
-        batches: t.Sequence[ext.PdDataFrame],
-        batch_dim: int = 0,
+        cls, batches: t.Sequence[ext.PdDataFrame], batch_dim: int = 0
     ) -> tuple[ext.PdDataFrame, list[int]]:
         import pandas as pd
 
@@ -363,10 +332,7 @@ class PandasDataFrameContainer(
 
     @classmethod
     def batch_to_batches(
-        cls,
-        batch: ext.PdDataFrame,
-        indices: t.Sequence[int],
-        batch_dim: int = 0,
+        cls, batch: ext.PdDataFrame, indices: t.Sequence[int], batch_dim: int = 0
     ) -> list[ext.PdDataFrame]:
         assert (
             batch_dim == 0
@@ -379,9 +345,7 @@ class PandasDataFrameContainer(
 
     @classmethod
     def to_payload(
-        cls,
-        batch: ext.PdDataFrame | ext.PdSeries,
-        batch_dim: int,
+        cls, batch: ext.PdDataFrame | ext.PdSeries, batch_dim: int
     ) -> Payload:
         import pandas as pd
 
@@ -408,17 +372,10 @@ class PandasDataFrameContainer(
             meta["with_buffer"] = False
             data = bs
 
-        return cls.create_payload(
-            data,
-            batch.shape[0],
-            meta=meta,
-        )
+        return cls.create_payload(data, batch.shape[0], meta=meta)
 
     @classmethod
-    def from_payload(
-        cls,
-        payload: Payload,
-    ) -> ext.PdDataFrame:
+    def from_payload(cls, payload: Payload) -> ext.PdDataFrame:
         if payload.meta["with_buffer"]:
             bs_str = t.cast(str, payload.meta["pickle_bytes_str"])
             bs = base64.b64decode(bs_str)
@@ -429,10 +386,7 @@ class PandasDataFrameContainer(
 
     @classmethod
     def batch_to_payloads(
-        cls,
-        batch: ext.PdDataFrame,
-        indices: t.Sequence[int],
-        batch_dim: int = 0,
+        cls, batch: ext.PdDataFrame, indices: t.Sequence[int], batch_dim: int = 0
     ) -> list[Payload]:
         batches = cls.batch_to_batches(batch, indices, batch_dim)
 
@@ -441,9 +395,7 @@ class PandasDataFrameContainer(
 
     @classmethod
     def from_batch_payloads(  # pylint: disable=arguments-differ
-        cls,
-        payloads: t.Sequence[Payload],
-        batch_dim: int = 0,
+        cls, payloads: t.Sequence[Payload], batch_dim: int = 0
     ) -> tuple[ext.PdDataFrame, list[int]]:
         batches = [cls.from_payload(payload) for payload in payloads]
         return cls.batches_to_batch(batches, batch_dim)
@@ -536,10 +488,7 @@ class DefaultContainer(DataContainer[t.Any, t.List[t.Any]]):
 
     @classmethod
     def batch_to_payloads(
-        cls,
-        batch: list[t.Any],
-        indices: t.Sequence[int],
-        batch_dim: int = 0,
+        cls, batch: list[t.Any], indices: t.Sequence[int], batch_dim: int = 0
     ) -> list[Payload]:
         batches = cls.batch_to_batches(batch, indices, batch_dim)
 
@@ -548,9 +497,7 @@ class DefaultContainer(DataContainer[t.Any, t.List[t.Any]]):
 
     @classmethod
     def from_batch_payloads(
-        cls,
-        payloads: t.Sequence[Payload],
-        batch_dim: int = 0,
+        cls, payloads: t.Sequence[Payload], batch_dim: int = 0
     ) -> tuple[list[t.Any], list[int]]:
         batches = [cls.from_payload(payload) for payload in payloads]
         return cls.batches_to_batch(batches, batch_dim)
@@ -728,10 +675,7 @@ class AutoContainer(DataContainer[t.Any, t.Any]):
 
     @classmethod
     def batch_to_payloads(
-        cls,
-        batch: t.Any,
-        indices: t.Sequence[int],
-        batch_dim: int = 0,
+        cls, batch: t.Any, indices: t.Sequence[int], batch_dim: int = 0
     ) -> list[Payload]:
         container_cls: t.Type[
             DataContainer[t.Any, t.Any]

@@ -104,10 +104,7 @@ class ValidateSchema(pydantic.BaseModel):
     endpoints: t.List[str]
 
 
-@svc.api(
-    input=JSON(pydantic_model=ValidateSchema),
-    output=JSON(),
-)
+@svc.api(input=JSON(pydantic_model=ValidateSchema), output=JSON())
 async def echo_json_enforce_structure(json_obj: JSONSerializable) -> JSONSerializable:
     batch_ret = await py_model.echo_json.async_run([json_obj])
     return batch_ret[0]
@@ -136,12 +133,9 @@ async def predict_ndarray_enforce_dtype(inp: NDArray[t.Any]) -> NDArray[t.Any]:
     return await py_model.predict_ndarray.async_run(inp)
 
 
-@svc.api(
-    input=NumpyNdarray(),
-    output=NumpyNdarray(),
-)
+@svc.api(input=NumpyNdarray(), output=NumpyNdarray())
 async def predict_ndarray_multi_output(
-    inp: "np.ndarray[t.Any, np.dtype[t.Any]]",
+    inp: "np.ndarray[t.Any, np.dtype[t.Any]]"
 ) -> "np.ndarray[t.Any, np.dtype[t.Any]]":
     out1, out2 = await py_model.echo_multi_ndarray.async_run(inp, inp)
     return out1 + out2
@@ -196,10 +190,7 @@ async def predict_different_args(compared: Image, original: Image):
     return dict(img1=img, img2=img)
 
 
-@svc.api(
-    input=Text(),
-    output=Text(),
-)
+@svc.api(input=Text(), output=Text())
 async def use_context(inp: str, ctx: bentoml.Context):
     if "error" in ctx.request.query_params:
         ctx.response.status_code = 400
@@ -209,28 +200,19 @@ async def use_context(inp: str, ctx: bentoml.Context):
     return inp
 
 
-@svc.api(
-    input=Text(),
-    output=Text(),
-)
+@svc.api(input=Text(), output=Text())
 async def predict_text_stream(inp: str) -> t.AsyncGenerator[str, None]:
     return stream_runner.count_text_stream.async_stream(inp)
 
 
-@svc.api(
-    input=Text(),
-    output=Text(),
-)
+@svc.api(input=Text(), output=Text())
 def yo(inp: str) -> str:
     return f"yo {inp}"
 
 
 # customise the service
 class AllowPingMiddleware:
-    def __init__(
-        self,
-        app: ASGIApp,
-    ) -> None:
+    def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:

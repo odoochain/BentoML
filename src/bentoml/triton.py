@@ -115,19 +115,10 @@ class _TritonRunner(_AbstractRunner):
         cli_args.append(f"--model-repository={model_repository}")
 
         if tritonserver_type == "http":
-            cli_args.extend(
-                [
-                    "--allow-grpc=False",
-                    "--http-address=127.0.0.1",
-                ]
-            )
+            cli_args.extend(["--allow-grpc=False", "--http-address=127.0.0.1"])
         elif tritonserver_type == "grpc":
             cli_args.extend(
-                [
-                    "--reuse-grpc-port=1",
-                    "--allow-http=False",
-                    "--grpc-address=0.0.0.0",
-                ]
+                ["--reuse-grpc-port=1", "--allow-http=False", "--grpc-address=0.0.0.0"]
             )
 
         # default settings, disable metrics

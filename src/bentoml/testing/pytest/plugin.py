@@ -36,8 +36,7 @@ else:
 
 
 TEST_MODEL_CONTEXT = ModelContext(
-    framework_name="testing",
-    framework_versions={"testing": "v1"},
+    framework_name="testing", framework_versions={"testing": "v1"}
 )
 
 _RUN_GPU_TESTS_MARKER = "--run-gpu-tests"
@@ -68,13 +67,9 @@ def pytest_addoption(parser: Parser) -> None:
 
 def pytest_configure(config: Config) -> None:
     # We will inject marker documentation here.
+    config.addinivalue_line("markers", "requires_gpus: requires GPU to run given test.")
     config.addinivalue_line(
-        "markers",
-        "requires_gpus: requires GPU to run given test.",
-    )
-    config.addinivalue_line(
-        "markers",
-        "requires_grpc: requires gRPC support to run given test.",
+        "markers", "requires_grpc: requires gRPC support to run given test."
     )
 
 
@@ -132,24 +127,15 @@ def _setup_deployment_mode(metafunc: Metafunc):
 def _setup_model_store(metafunc: Metafunc):
     """Setup dummy models for test session."""
     with bentoml.models.create(
-        "testmodel",
-        module=__name__,
-        signatures={},
-        context=TEST_MODEL_CONTEXT,
+        "testmodel", module=__name__, signatures={}, context=TEST_MODEL_CONTEXT
     ):
         pass
     with bentoml.models.create(
-        "testmodel",
-        module=__name__,
-        signatures={},
-        context=TEST_MODEL_CONTEXT,
+        "testmodel", module=__name__, signatures={}, context=TEST_MODEL_CONTEXT
     ):
         pass
     with bentoml.models.create(
-        "anothermodel",
-        module=__name__,
-        signatures={},
-        context=TEST_MODEL_CONTEXT,
+        "anothermodel", module=__name__, signatures={}, context=TEST_MODEL_CONTEXT
     ):
         pass
 
@@ -306,9 +292,9 @@ def fixture_metrics_client() -> PrometheusClient:
 def fixture_change_dir(request: FixtureRequest) -> t.Generator[None, None, None]:
     """A fixture to change given test directory to the directory of the current running test."""
     os.chdir(
-        request.fspath.dirname,  # type: ignore (bad pytest stubs)
+        request.fspath.dirname  # type: ignore (bad pytest stubs)
     )
     yield
     os.chdir(
-        request.config.invocation_dir,  # type: ignore (bad pytest stubs)
+        request.config.invocation_dir  # type: ignore (bad pytest stubs)
     )

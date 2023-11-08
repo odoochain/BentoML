@@ -64,21 +64,21 @@ FIELDPB_TO_NPDTYPE_NAME_MAP = {
 
 @t.overload
 def dtypepb_to_npdtype_map(
-    version: t.Literal["v1"] = ...,
+    version: t.Literal["v1"] = ...
 ) -> dict[pb.NDArray.DType.ValueType, ext.NpDTypeLike]:
     ...
 
 
 @t.overload
 def dtypepb_to_npdtype_map(
-    version: t.Literal["v1alpha1"] = ...,
+    version: t.Literal["v1alpha1"] = ...
 ) -> dict[pb_v1alpha1.NDArray.DType.ValueType, ext.NpDTypeLike]:
     ...
 
 
 @lru_cache(maxsize=2)
 def dtypepb_to_npdtype_map(
-    version: str = LATEST_PROTOCOL_VERSION,
+    version: str = LATEST_PROTOCOL_VERSION
 ) -> dict[int, ext.NpDTypeLike]:
     pb, _ = import_generated_stubs(version)
     # pb.NDArray.Dtype -> np.dtype
@@ -96,14 +96,14 @@ def dtypepb_to_npdtype_map(
 
 @t.overload
 def dtypepb_to_fieldpb_map(
-    version: t.Literal["v1"] = ...,
+    version: t.Literal["v1"] = ...
 ) -> dict[pb.NDArray.DType.ValueType, str]:
     ...
 
 
 @t.overload
 def dtypepb_to_fieldpb_map(
-    version: t.Literal["v1alpha1"] = ...,
+    version: t.Literal["v1alpha1"] = ...
 ) -> dict[pb_v1alpha1.NDArray.DType.ValueType, str]:
     ...
 
@@ -124,21 +124,21 @@ def fieldpb_to_npdtype_map() -> dict[str, ext.NpDTypeLike]:
 
 @t.overload
 def npdtype_to_dtypepb_map(
-    version: t.Literal["v1"] = ...,
+    version: t.Literal["v1"] = ...
 ) -> dict[ext.NpDTypeLike, pb.NDArray.DType.ValueType]:
     ...
 
 
 @t.overload
 def npdtype_to_dtypepb_map(
-    version: t.Literal["v1alpha1"] = ...,
+    version: t.Literal["v1alpha1"] = ...
 ) -> dict[ext.NpDTypeLike, pb_v1alpha1.NDArray.DType.ValueType]:
     ...
 
 
 @lru_cache(maxsize=2)
 def npdtype_to_dtypepb_map(
-    version: str = LATEST_PROTOCOL_VERSION,
+    version: str = LATEST_PROTOCOL_VERSION
 ) -> dict[ext.NpDTypeLike, int]:
     # np.dtype -> pb.NDArray.Dtype
     return {v: k for k, v in dtypepb_to_npdtype_map(version).items()}
@@ -571,7 +571,7 @@ class NumpyNdarray(
                 elif len(fieldpb) > 1:
                     # when there are more than two values provided in the proto.
                     raise BadInput(
-                        f"Array contents can only be one of given values key. Use one of '{fieldpb}' instead.",
+                        f"Array contents can only be one of given values key. Use one of '{fieldpb}' instead."
                     ) from None
 
                 dtype: ext.NpDTypeLike = fieldpb_to_npdtype_map()[fieldpb[0]]
@@ -625,13 +625,11 @@ class NumpyNdarray(
             fieldpb = npdtype_to_fieldpb_map()[obj.dtype]
             dtypepb = npdtype_to_dtypepb_map(version=version)[obj.dtype]
             return pb.NDArray(
-                dtype=dtypepb,
-                shape=tuple(obj.shape),
-                **{fieldpb: obj.ravel().tolist()},
+                dtype=dtypepb, shape=tuple(obj.shape), **{fieldpb: obj.ravel().tolist()}
             )
         except KeyError:
             raise BadInput(
-                f"Unsupported dtype '{obj.dtype}' for response message.",
+                f"Unsupported dtype '{obj.dtype}' for response message."
             ) from None
 
     def from_arrow(self, batch: pyarrow.RecordBatch) -> ext.NpNDArray:

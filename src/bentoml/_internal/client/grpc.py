@@ -210,11 +210,7 @@ class AsyncGrpcClient(AsyncClient):
         return {
             method: {"input_type": input_type, "output_type": output_type}
             for method, input_type, output_type in (
-                (
-                    self._call_rpc,
-                    self._pb.Request,
-                    self._pb.Response,
-                ),
+                (self._call_rpc, self._pb.Request, self._pb.Response),
                 (
                     f"/bentoml.grpc.{self._protocol_version}.BentoService/ServiceMetadata",
                     self._pb.ServiceMetadataRequest,
@@ -229,13 +225,9 @@ class AsyncGrpcClient(AsyncClient):
         }
 
     @cached_property
-    def _rpc_methods(
-        self,
-    ) -> dict[str, t.Callable[..., t.Awaitable["Response"]]]:
+    def _rpc_methods(self) -> dict[str, t.Callable[..., t.Awaitable["Response"]]]:
         def make_async_fn(
-            method_name: str,
-            input_type: t.Any,
-            output_type: t.Any,
+            method_name: str, input_type: t.Any, output_type: t.Any
         ) -> t.Callable[..., t.Awaitable["Response"]]:
             rpc = self.channel.unary_unary(
                 method_name,
@@ -244,8 +236,7 @@ class AsyncGrpcClient(AsyncClient):
             )
 
             def fn(
-                channel_kwargs: t.Dict[str, t.Any],
-                method_kwargs: t.Dict[str, t.Any],
+                channel_kwargs: t.Dict[str, t.Any], method_kwargs: t.Dict[str, t.Any]
             ) -> t.Awaitable["Response"]:
                 return t.cast(
                     t.Awaitable["Response"],
@@ -265,13 +256,12 @@ class AsyncGrpcClient(AsyncClient):
 
     async def health(self, service_name: str, *, timeout: int = 30) -> t.Any:
         return await self._rpc_methods["/grpc.health.v1.Health/Check"](
-            method_kwargs={"service": service_name},
-            channel_kwargs={"timeout": timeout},
+            method_kwargs={"service": service_name}, channel_kwargs={"timeout": timeout}
         )
 
     @staticmethod
     def _split_channel_args(
-        **kwargs: t.Any,
+        **kwargs: t.Any
     ) -> tuple[t.Dict[str, t.Any], t.Dict[str, t.Any]]:
         channel_kwarg_names = (
             "timeout",
@@ -290,11 +280,7 @@ class AsyncGrpcClient(AsyncClient):
         return other_kwargs, channel_kwargs
 
     async def _call(
-        self,
-        inp: t.Any = None,
-        *,
-        _bentoml_api: InferenceAPI[t.Any],
-        **attrs: t.Any,
+        self, inp: t.Any = None, *, _bentoml_api: InferenceAPI[t.Any], **attrs: t.Any
     ) -> t.Any:
         state = self.channel.get_state(try_to_connect=True)
         if state != grpc.ChannelConnectivity.READY:
@@ -317,7 +303,7 @@ class AsyncGrpcClient(AsyncClient):
             {
                 "api_name": api_fn[_bentoml_api],
                 _bentoml_api.input.proto_fields[0]: serialized_req,
-            },
+            }
         )
 
         if self._call_rpc not in self._rpc_methods:
@@ -325,8 +311,7 @@ class AsyncGrpcClient(AsyncClient):
                 f"'{self._call_rpc}' is a yet supported rpc. Current supported are: {self._rpc_metadata}"
             )
         proto = await self._rpc_methods[self._call_rpc](
-            channel_kwargs=channel_kwargs,
-            method_kwargs=kwargs,
+            channel_kwargs=channel_kwargs, method_kwargs=kwargs
         )
         return await _bentoml_api.output.from_proto(
             getattr(proto, proto.WhichOneof("content"))
@@ -469,9 +454,7 @@ class SyncGrpcClient(SyncClient):
                 compression=self._compression,
             )
         return grpc.insecure_channel(
-            self.server_url,
-            options=self._options,
-            compression=self._compression,
+            self.server_url, options=self._options, compression=self._compression
         )
 
     @staticmethod
@@ -569,11 +552,7 @@ class SyncGrpcClient(SyncClient):
         return {
             method: {"input_type": input_type, "output_type": output_type}
             for method, input_type, output_type in (
-                (
-                    self._call_rpc,
-                    self._pb.Request,
-                    self._pb.Response,
-                ),
+                (self._call_rpc, self._pb.Request, self._pb.Response),
                 (
                     f"/bentoml.grpc.{self._protocol_version}.BentoService/ServiceMetadata",
                     self._pb.ServiceMetadataRequest,
@@ -590,9 +569,7 @@ class SyncGrpcClient(SyncClient):
     @cached_property
     def _rpc_methods(self) -> dict[str, t.Callable[..., "Response"]]:
         def make_sync_fn(
-            method_name: str,
-            input_type: t.Any,
-            output_type: t.Any,
+            method_name: str, input_type: t.Any, output_type: t.Any
         ) -> t.Callable[..., "Response"]:
             rpc = self.channel.unary_unary(
                 method_name,
@@ -601,12 +578,10 @@ class SyncGrpcClient(SyncClient):
             )
 
             def fn(
-                channel_kwargs: t.Dict[str, t.Any],
-                method_kwargs: t.Dict[str, t.Any],
+                channel_kwargs: t.Dict[str, t.Any], method_kwargs: t.Dict[str, t.Any]
             ) -> Response:
                 return t.cast(
-                    "Response",
-                    rpc(input_type(**method_kwargs), **channel_kwargs),
+                    "Response", rpc(input_type(**method_kwargs), **channel_kwargs)
                 )
 
             return fn
@@ -622,13 +597,12 @@ class SyncGrpcClient(SyncClient):
 
     def health(self, service_name: str, *, timeout: int = 30) -> t.Any:
         return self._rpc_methods["/grpc.health.v1.Health/Check"](
-            method_kwargs={"service": service_name},
-            channel_kwargs={"timeout": timeout},
+            method_kwargs={"service": service_name}, channel_kwargs={"timeout": timeout}
         )
 
     @staticmethod
     def _split_channel_args(
-        **kwargs: t.Any,
+        **kwargs: t.Any
     ) -> tuple[t.Dict[str, t.Any], t.Dict[str, t.Any]]:
         channel_kwarg_names = (
             "timeout",
@@ -647,11 +621,7 @@ class SyncGrpcClient(SyncClient):
         return other_kwargs, channel_kwargs
 
     def _call(
-        self,
-        inp: t.Any = None,
-        *,
-        _bentoml_api: InferenceAPI[t.Any],
-        **attrs: t.Any,
+        self, inp: t.Any = None, *, _bentoml_api: InferenceAPI[t.Any], **attrs: t.Any
     ):
         if _bentoml_api.multi_input:
             if inp is not None:
@@ -669,7 +639,7 @@ class SyncGrpcClient(SyncClient):
             {
                 "api_name": api_fn[_bentoml_api],
                 _bentoml_api.input.proto_fields[0]: serialized_req,
-            },
+            }
         )
 
         if self._call_rpc not in self._rpc_methods:
@@ -677,8 +647,7 @@ class SyncGrpcClient(SyncClient):
                 f"'{self._call_rpc}' is a yet supported rpc. Current supported are: {self._rpc_metadata}"
             )
         proto = self._rpc_methods[self._call_rpc](
-            channel_kwargs=channel_kwargs,
-            method_kwargs=kwargs,
+            channel_kwargs=channel_kwargs, method_kwargs=kwargs
         )
 
         return asyncio.run(

@@ -40,8 +40,7 @@ def get(tag_like: str | Tag) -> Model:
 
 
 def load_model(
-    bentoml_model: str | Tag | Model,
-    device_id: t.Optional[str] = "cpu",
+    bentoml_model: str | Tag | Model, device_id: t.Optional[str] = "cpu"
 ) -> torch.ScriptModule:
     """
     Load a model from BentoML local modelstore with given name.
@@ -198,7 +197,5 @@ def get_runnable(bento_model: Model):
             output_spec=options.output_spec,
         )
     return partial_class(
-        PytorchModelRunnable,
-        bento_model=bento_model,
-        loader=load_model,
+        PytorchModelRunnable, bento_model=bento_model, loader=load_model
     )

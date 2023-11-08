@@ -60,9 +60,7 @@ class LocalRunnerRef(RunnerHandle):
             self._limiter = anyio.CapacityLimiter(1)
         method = getattr(self._runnable, __bentoml_method.name)
         return await anyio.to_thread.run_sync(
-            functools.partial(method, **kwargs),
-            *args,
-            limiter=self._limiter,
+            functools.partial(method, **kwargs), *args, limiter=self._limiter
         )
 
     def async_stream_method(

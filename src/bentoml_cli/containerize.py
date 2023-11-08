@@ -599,7 +599,7 @@ def add_containerize_command(cli: Group) -> None:
                 return result
 
             click.echo(
-                f'Successfully built Bento container for "{bento_tag}" with tag(s) "{",".join(tags)}"',
+                f'Successfully built Bento container for "{bento_tag}" with tag(s) "{",".join(tags)}"'
             )
             instructions = (
                 "To run your newly built Bento container, run:\n"

@@ -59,7 +59,7 @@ def _convert_python_version(py_version: str | None) -> str | None:
     if match is None:
         raise InvalidArgument(
             f'Invalid build option: docker.python_version="{py_version}", python '
-            "version must follow standard python semver format, e.g. 3.8.15",
+            "version must follow standard python semver format, e.g. 3.8.15"
         )
     major, minor = match.groups()
     target_python_version = f"{major}.{minor}"
@@ -164,8 +164,7 @@ class DockerOptions:
         ),
     )
     env: t.Optional[t.Union[str, t.List[str], t.Dict[str, str]]] = attr.field(
-        default=None,
-        converter=_convert_env,
+        default=None, converter=_convert_env
     )
     system_packages: t.Optional[t.List[str]] = None
     setup_script: t.Optional[str] = None
@@ -399,11 +398,7 @@ class CondaOptions:
         # Get the python version from given environment.yml file
 
         environment_yml = bento_fs.getsyspath(
-            fs.path.join(
-                "env",
-                "conda",
-                CONDA_ENV_YAML_FILE_NAME,
-            )
+            fs.path.join("env", "conda", CONDA_ENV_YAML_FILE_NAME)
         )
         if os.path.exists(environment_yml):
             with open(environment_yml, "r") as f:
@@ -694,7 +689,7 @@ if t.TYPE_CHECKING:
 
 
 def dict_options_converter(
-    options_type: t.Type[OptionsCls],
+    options_type: t.Type[OptionsCls]
 ) -> t.Callable[[OptionsCls | dict[str, t.Any] | None], OptionsCls]:
     def _converter(value: OptionsCls | dict[str, t.Any] | None) -> OptionsCls:
         if value is None:
@@ -722,7 +717,7 @@ class ModelSpec:
 
 
 def convert_models_config(
-    models_config: list[str | dict[str, t.Any] | ModelSpec] | None,
+    models_config: list[str | dict[str, t.Any] | ModelSpec] | None
 ) -> list[ModelSpec]:
     if not models_config:
         return []
@@ -760,16 +755,13 @@ class BentoBuildConfig:
     include: t.Optional[t.List[str]] = None
     exclude: t.Optional[t.List[str]] = None
     docker: DockerOptions = attr.field(
-        default=None,
-        converter=dict_options_converter(DockerOptions),
+        default=None, converter=dict_options_converter(DockerOptions)
     )
     python: PythonOptions = attr.field(
-        default=None,
-        converter=dict_options_converter(PythonOptions),
+        default=None, converter=dict_options_converter(PythonOptions)
     )
     conda: CondaOptions = attr.field(
-        default=None,
-        converter=dict_options_converter(CondaOptions),
+        default=None, converter=dict_options_converter(CondaOptions)
     )
     models: t.List[ModelSpec] = attr.field(
         factory=list, converter=convert_models_config

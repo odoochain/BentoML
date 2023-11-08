@@ -61,7 +61,7 @@ def validate_proto_fields(
     accepted_fields = io_.proto_fields + ("serialized_bytes",)
     if field not in accepted_fields:
         raise InvalidArgument(
-            f"'{io_.__class__.__name__}' accepts one of the following fields: '{','.join(accepted_fields)}' got '{field}' instead.",
+            f"'{io_.__class__.__name__}' accepts one of the following fields: '{','.join(accepted_fields)}' got '{field}' instead."
         ) from None
     return field
 

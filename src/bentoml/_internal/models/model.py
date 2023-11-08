@@ -199,8 +199,7 @@ class Model(StoreItem):
 
     @inject
     def save(
-        self,
-        model_store: ModelStore = Provide[BentoMLContainer.model_store],
+        self, model_store: ModelStore = Provide[BentoMLContainer.model_store]
     ) -> Model:
         try:
             self.validate()
@@ -235,9 +234,7 @@ class Model(StoreItem):
 
     @classmethod
     def enter_cloudpickle_context(
-        cls,
-        external_modules: list[ModuleType],
-        imported_modules: list[ModuleType],
+        cls, external_modules: list[ModuleType], imported_modules: list[ModuleType]
     ) -> list[ModuleType]:
         """
         Enter a context for cloudpickle to pickle custom objects defined in external modules.
@@ -491,11 +488,9 @@ if TYPE_CHECKING:
 
 
 def model_signature_unstructure_hook(
-    model_signature: ModelSignature,
+    model_signature: ModelSignature
 ) -> dict[str, t.Any]:
-    encoded: dict[str, t.Any] = {
-        "batchable": model_signature.batchable,
-    }
+    encoded: dict[str, t.Any] = {"batchable": model_signature.batchable}
     # ignore batch_dim if batchable is False
     if model_signature.batchable:
         encoded["batch_dim"] = model_signature.batch_dim

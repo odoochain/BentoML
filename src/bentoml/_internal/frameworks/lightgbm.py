@@ -199,9 +199,7 @@ def save_model(
     )
 
     if signatures is None:
-        signatures = {
-            "predict": {"batchable": False},
-        }
+        signatures = {"predict": {"batchable": False}}
         logger.info(
             'Using the default model signature for LightGBM (%s) for model "%s".',
             signatures,
@@ -249,8 +247,7 @@ def get_runnable(bento_model: bentoml.Model) -> t.Type[bentoml.Runnable]:
 
     def add_runnable_method(method_name: str, options: ModelSignature):
         def _run(
-            self: LightGBMRunnable,
-            input_data: ext.NpNDArray | ext.PdDataFrame,
+            self: LightGBMRunnable, input_data: ext.NpNDArray | ext.PdDataFrame
         ) -> ext.NpNDArray:
             res = self.predict_fns[method_name](input_data)
             return np.asarray(res)  # type: ignore (unknown ndarray types)

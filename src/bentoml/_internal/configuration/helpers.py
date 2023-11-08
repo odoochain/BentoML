@@ -72,9 +72,7 @@ punctuation = r"""!"#$%&'()*+,-./:;<=>?@[\]^`{|}~"""
 
 
 def flatten_dict(
-    d: t.MutableMapping[str, t.Any],
-    parent: str = "",
-    sep: str = ".",
+    d: t.MutableMapping[str, t.Any], parent: str = "", sep: str = "."
 ) -> t.Generator[tuple[str, t.Any], None, None]:
     """Flatten nested dictionary into a single level dictionary."""
     for k, v in d.items():

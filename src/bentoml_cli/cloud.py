@@ -39,9 +39,7 @@ def add_cloud_command(cli: click.Group) -> click.Group:
         help="BentoCloud or Yatai endpoint, i.e: https://cloud.bentoml.com",
     )
     @cog.optgroup.option(
-        "--api-token",
-        type=click.STRING,
-        help="BentoCloud or Yatai user API token",
+        "--api-token", type=click.STRING, help="BentoCloud or Yatai user API token"
     )
     @click.pass_obj
     def login(shared_options: SharedOptions, endpoint: str, api_token: str) -> None:  # type: ignore (not accessed)

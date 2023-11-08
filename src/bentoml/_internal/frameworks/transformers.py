@@ -193,8 +193,7 @@ class TransformersOptions(ModelOptions):
     )
     default: DefaultMapping = attr.field(factory=dict, converter=_deep_convert_to_tuple)
     type: str = attr.field(
-        validator=attr.validators.optional(_validate_pipeline_type),
-        default=None,
+        validator=attr.validators.optional(_validate_pipeline_type), default=None
     )
     kwargs: t.Dict[str, t.Any] = attr.field(factory=dict)
 
@@ -804,10 +803,7 @@ def import_model(
                     if version is not None:
                         tag.version = version
         except Exception:
-            logger.info(
-                "Failed to download model file for (%s).",
-                model_name_or_path,
-            )
+            logger.info("Failed to download model file for (%s).", model_name_or_path)
             raise
 
     if model is None:
@@ -832,11 +828,7 @@ def import_model(
                 name,
             )
 
-    metadata.update(
-        {
-            "_pretrained_class": pretrained.__class__.__name__,
-        }
-    )
+    metadata.update({"_pretrained_class": pretrained.__class__.__name__})
 
     if hasattr(pretrained, "framework") and isinstance(
         pretrained,
@@ -863,11 +855,7 @@ def import_model(
     ) as bento_model:
         ignore = shutil.ignore_patterns(".git")
         shutil.copytree(
-            src_dir,
-            bento_model.path,
-            symlinks=False,
-            ignore=ignore,
-            dirs_exist_ok=True,
+            src_dir, bento_model.path, symlinks=False, ignore=ignore, dirs_exist_ok=True
         )
         with open(bento_model.path_of(PRETRAINED_PROTOCOL_NAME), "wb") as f:
             cloudpickle.dump(pretrained.__class__, f)
@@ -1086,11 +1074,7 @@ def save_model(
         if metadata is None:
             metadata = {}
 
-        metadata.update(
-            {
-                "_pretrained_class": pretrained.__class__.__name__,
-            }
-        )
+        metadata.update({"_pretrained_class": pretrained.__class__.__name__})
         if hasattr(pretrained, "framework") and isinstance(
             pretrained,
             (

@@ -26,11 +26,7 @@ def img():
             img_bytes = f.read()
         im = PIL.Image.open(io.BytesIO(img_bytes))
         arr = np.array(im)
-        images[digit] = {
-            "bytes": img_bytes,
-            "pil": im,
-            "array": arr,
-        }
+        images[digit] = {"bytes": img_bytes, "pil": im, "array": arr}
 
     return images
 

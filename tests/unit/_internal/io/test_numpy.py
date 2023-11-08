@@ -145,21 +145,19 @@ async def test_from_proto(dtype: pb.NDArray.DType.ValueType) -> None:
 
     np.testing.assert_array_equal(
         await NumpyNdarray(dtype=example.dtype, shape=example.shape).from_proto(
-            example.ravel().tobytes(),
+            example.ravel().tobytes()
         ),
         example,
     )
     # DTYPE_UNSPECIFIED
     np.testing.assert_array_equal(
         await NumpyNdarray().from_proto(
-            pb.NDArray(dtype=pb.NDArray.DType.DTYPE_UNSPECIFIED),
+            pb.NDArray(dtype=pb.NDArray.DType.DTYPE_UNSPECIFIED)
         ),
         np.empty(0),
     )
     np.testing.assert_array_equal(
-        await NumpyNdarray().from_proto(
-            pb.NDArray(shape=tuple(example.shape)),
-        ),
+        await NumpyNdarray().from_proto(pb.NDArray(shape=tuple(example.shape))),
         np.empty(tuple(example.shape)),
     )
     # different DTYPE
@@ -168,14 +166,14 @@ async def test_from_proto(dtype: pb.NDArray.DType.ValueType) -> None:
             pb.NDArray(
                 dtype=dtype,
                 **{dtypepb_to_fieldpb_map()[dtype]: generate_1d_array(dtype)},
-            ),
+            )
         ),
         np.array(generate_1d_array(dtype), dtype=dtypepb_to_npdtype_map()[dtype]),
     )
     # given shape from message.
     np.testing.assert_array_equal(
         await NumpyNdarray().from_proto(
-            pb.NDArray(shape=[3, 3], float_values=[1.0] * 9),
+            pb.NDArray(shape=[3, 3], float_values=[1.0] * 9)
         ),
         np.array([[1.0] * 3] * 3),
     )

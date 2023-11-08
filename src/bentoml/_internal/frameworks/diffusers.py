@@ -35,7 +35,7 @@ try:
     from diffusers.utils.import_utils import is_xformers_available
 except ImportError:  # pragma: no cover
     raise MissingDependencyException(
-        "'diffusers' and 'transformers' is required in order to use module 'bentoml.diffusers', install diffusers and its dependencies with 'pip install --upgrade diffusers transformers accelerate'. For more information, refer to https://github.com/huggingface/diffusers",
+        "'diffusers' and 'transformers' is required in order to use module 'bentoml.diffusers', install diffusers and its dependencies with 'pip install --upgrade diffusers transformers accelerate'. For more information, refer to https://github.com/huggingface/diffusers"
     )
 
 
@@ -138,7 +138,7 @@ def _load_lora_weights_to_pipeline(
 
 
 def _prepare_textual_inversion_args(
-    raw_arg: TextualInversionOptionType,
+    raw_arg: TextualInversionOptionType
 ) -> tuple[str, dict[str, str]]:
     if isinstance(raw_arg, str):
         # if user only provide a string, we consider that a path to
@@ -152,7 +152,7 @@ def _prepare_textual_inversion_args(
 
 
 def _str2cls(
-    full_cls_str: str,
+    full_cls_str: str
 ) -> type[diffusers.DiffusionPipeline | diffusers.SchedulerMixin]:
     import importlib
 
@@ -472,9 +472,7 @@ def import_model(
     )
 
     if signatures is None:
-        signatures = {
-            "__call__": {"batchable": False},
-        }
+        signatures = {"__call__": {"batchable": False}}
         logger.info(
             'Using the default model signature for diffusers (%s) for model "%s".',
             signatures,
@@ -520,9 +518,7 @@ def import_model(
         from huggingface_hub import snapshot_download
 
         src_dir = snapshot_download(
-            model_name_or_path,
-            proxies=proxies,
-            revision=revision,
+            model_name_or_path, proxies=proxies, revision=revision
         )
 
         if sync_with_hub_version:
@@ -610,9 +606,7 @@ def save_model(
     )
 
     if signatures is None:
-        signatures = {
-            "__call__": {"batchable": False},
-        }
+        signatures = {"__call__": {"batchable": False}}
         logger.info(
             'Using the default model signature for diffusers (%s) for model "%s".',
             signatures,
@@ -749,7 +743,7 @@ def get_runnable(bento_model: bentoml.Model) -> t.Type[bentoml.Runnable]:
                     return dict(success=True)
                 if scheduler_cls in self.pipeline.scheduler.compatibles:
                     self.pipeline.scheduler = scheduler_cls.from_config(
-                        self.pipeline.scheduler.config,
+                        self.pipeline.scheduler.config
                     )
                     return dict(success=True)
                 else:
@@ -761,21 +755,17 @@ def get_runnable(bento_model: bentoml.Model) -> t.Type[bentoml.Runnable]:
             except (ModuleNotFoundError, ValueError, AttributeError):
                 logger.info(f"Cannot import {scheduler_txt}")
                 return dict(
-                    success=False,
-                    error_message="cannot import scheduler class",
+                    success=False, error_message="cannot import scheduler class"
                 )
 
     if support_lora:
 
         def _load_lora_weights(
-            self: DiffusersRunnable,
-            lora_weights: LoraOptionType | list[LoraOptionType],
+            self: DiffusersRunnable, lora_weights: LoraOptionType | list[LoraOptionType]
         ):
             _load_lora_weights_to_pipeline(self.pipeline, lora_weights, self.lora_dir)
 
-        def _unload_lora_weights(
-            self: DiffusersRunnable,
-        ):
+        def _unload_lora_weights(self: DiffusersRunnable):
             self.pipeline.unload_lora_weights()
 
             # clear cached lora weights from GPU memory
@@ -784,16 +774,13 @@ def get_runnable(bento_model: bentoml.Model) -> t.Type[bentoml.Runnable]:
     else:
 
         def _load_lora_weights(
-            self: DiffusersRunnable,
-            lora_args: LoraOptionType | list[LoraOptionType],
+            self: DiffusersRunnable, lora_args: LoraOptionType | list[LoraOptionType]
         ):
             raise NotImplementedError(
                 f"Class {pipeline_class} is not a subclass of LoraLoaderMixin, cannot load lora weights"
             )
 
-        def _unload_lora_weights(
-            self: DiffusersRunnable,
-        ):
+        def _unload_lora_weights(self: DiffusersRunnable):
             raise NotImplementedError(
                 f"Class {pipeline_class} is not a subclass of LoraLoaderMixin, cannot unload lora weights"
             )
@@ -807,9 +794,7 @@ def get_runnable(bento_model: bentoml.Model) -> t.Type[bentoml.Runnable]:
         if support_lora:
 
             def _run_method(
-                runnable_self: DiffusersRunnable,
-                *args: t.Any,
-                **kwargs: t.Any,
+                runnable_self: DiffusersRunnable, *args: t.Any, **kwargs: t.Any
             ) -> t.Any:
                 if method_partial_kwargs is not None:
                     kwargs = dict(method_partial_kwargs, **kwargs)
@@ -837,9 +822,7 @@ def get_runnable(bento_model: bentoml.Model) -> t.Type[bentoml.Runnable]:
         else:
 
             def _run_method(
-                runnable_self: DiffusersRunnable,
-                *args: t.Any,
-                **kwargs: t.Any,
+                runnable_self: DiffusersRunnable, *args: t.Any, **kwargs: t.Any
             ) -> t.Any:
                 if method_partial_kwargs is not None:
                     kwargs = dict(method_partial_kwargs, **kwargs)

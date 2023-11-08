@@ -44,8 +44,7 @@ def get(tag_like: str | Tag) -> Model:
 
 
 def load_model(
-    bentoml_model: str | Tag | Model,
-    device_id: t.Optional[str] = "cpu",
+    bentoml_model: str | Tag | Model, device_id: t.Optional[str] = "cpu"
 ) -> torch.nn.Module:
     """
     Load a model from a BentoML Model with given name.
@@ -156,8 +155,7 @@ def save_model(
         raise TypeError(f"Given model ({model}) is not a torch.nn.Module.")
 
     context: ModelContext = ModelContext(
-        framework_name="torch",
-        framework_versions={"torch": get_pkg_version("torch")},
+        framework_name="torch", framework_versions={"torch": get_pkg_version("torch")}
     )
 
     if signatures is None:
@@ -198,9 +196,7 @@ def get_runnable(bento_model: Model):
     partial_kwargs: t.Dict[str, t.Any] = bento_model.info.options.partial_kwargs  # type: ignore
 
     runnable_class: type[PytorchModelRunnable] = partial_class(
-        PytorchModelRunnable,
-        bento_model=bento_model,
-        loader=load_model,
+        PytorchModelRunnable, bento_model=bento_model, loader=load_model
     )
     for method_name, options in bento_model.info.signatures.items():
         method_partial_kwargs = partial_kwargs.get(method_name)

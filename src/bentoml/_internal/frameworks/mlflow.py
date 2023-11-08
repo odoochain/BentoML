@@ -26,7 +26,7 @@ try:
     import mlflow.models
 except ImportError:  # pragma: no cover
     raise MissingDependencyException(
-        "'mlflow' is required in order to use module 'bentoml.mlflow', install mlflow with 'pip install mlflow'. For more information, refer to https://mlflow.org/",
+        "'mlflow' is required in order to use module 'bentoml.mlflow', install mlflow with 'pip install mlflow'. For more information, refer to https://mlflow.org/"
     )
 
 
@@ -63,9 +63,7 @@ def get(tag_like: str | Tag) -> bentoml.Model:
     return model
 
 
-def load_model(
-    bento_model: str | Tag | bentoml.Model,
-) -> mlflow.pyfunc.PyFuncModel:
+def load_model(bento_model: str | Tag | bentoml.Model) -> mlflow.pyfunc.PyFuncModel:
     """
     Load the MLflow `PyFunc <https://www.mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#mlflow.pyfunc.PyFuncModel>`_ model with the given tag from the local BentoML model store.
 
@@ -152,14 +150,11 @@ def import_model(
         )
     """
     context = ModelContext(
-        framework_name="mlflow",
-        framework_versions={"mlflow": mlflow.__version__},
+        framework_name="mlflow", framework_versions={"mlflow": mlflow.__version__}
     )
 
     if signatures is None:
-        signatures = {
-            "predict": {"batchable": False},
-        }
+        signatures = {"predict": {"batchable": False}}
         logger.info(
             'Using the default model signature for MLflow (%s) for model "%s".',
             signatures,

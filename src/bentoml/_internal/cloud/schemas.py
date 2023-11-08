@@ -27,9 +27,7 @@ def datetime_decoder(datetime_str: t.Optional[str], _: t.Any) -> t.Optional[date
     return parse(datetime_str)
 
 
-def dict_options_converter(
-    options_type: type[T],
-) -> t.Callable[[T | dict[str, T]], T]:
+def dict_options_converter(options_type: type[T]) -> t.Callable[[T | dict[str, T]], T]:
     def _converter(value: T | dict[str, T] | None) -> T:
         if value is None:
             return options_type()

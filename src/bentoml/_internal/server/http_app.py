@@ -106,8 +106,9 @@ class HTTPAppFactory(BaseAppFactory):
         enable_metrics: bool = Provide[
             BentoMLContainer.api_server_config.metrics.enabled
         ],
-        max_concurrency: int
-        | None = Provide[BentoMLContainer.api_server_config.traffic.max_concurrency],
+        max_concurrency: int | None = Provide[
+            BentoMLContainer.api_server_config.traffic.max_concurrency
+        ],
     ):
         self.bento_service = bento_service
         self.enable_access_control = enable_access_control
@@ -129,9 +130,7 @@ class HTTPAppFactory(BaseAppFactory):
 
         # TODO: add readme description.
         return Response(
-            content=DEFAULT_INDEX_HTML,
-            status_code=200,
-            media_type="text/html",
+            content=DEFAULT_INDEX_HTML, status_code=200, media_type="text/html"
         )
 
     async def docs_view_func(self, _: Request) -> Response:
@@ -162,11 +161,7 @@ class HTTPAppFactory(BaseAppFactory):
 
         routes.append(Route(path="/", name="home", endpoint=self.index_view_func))
         routes.append(
-            Route(
-                path="/docs.json",
-                name="docs",
-                endpoint=self.docs_view_func,
-            )
+            Route(path="/docs.json", name="docs", endpoint=self.docs_view_func)
         )
 
         parent_dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -308,8 +303,7 @@ class HTTPAppFactory(BaseAppFactory):
         return app
 
     def _create_api_endpoint(
-        self,
-        api: InferenceAPI[t.Any],
+        self, api: InferenceAPI[t.Any]
     ) -> t.Callable[[Request], t.Coroutine[t.Any, t.Any, Response]]:
         """
         Create api function for starlette route, it wraps around user defined API

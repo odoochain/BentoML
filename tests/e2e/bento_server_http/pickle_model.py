@@ -35,9 +35,7 @@ class PickleModel:
         return input_arr
 
     def predict_ndarray(
-        self,
-        arr: NDArray[t.Any],
-        coefficient: int = 1,
+        self, arr: NDArray[t.Any], coefficient: int = 1
     ) -> NDArray[t.Any]:
         assert isinstance(arr, np.ndarray)
         return arr * coefficient

@@ -60,11 +60,7 @@ class PytorchModelRunnable(bentoml.Runnable):
     SUPPORTED_RESOURCES = ("nvidia.com/gpu", "cpu")
     SUPPORTS_CPU_MULTI_THREADING = True
 
-    def __init__(
-        self,
-        bento_model: Model,
-        loader: t.Callable[..., torch.nn.Module],
-    ):
+    def __init__(self, bento_model: Model, loader: t.Callable[..., torch.nn.Module]):
         super().__init__()
         # if torch.cuda.device_count():
         if torch.cuda.is_available():
@@ -79,8 +75,7 @@ class PytorchModelRunnable(bentoml.Runnable):
 
 
 def make_pytorch_runnable_method(
-    method_name: str,
-    partial_kwargs: dict[str, t.Any] | None = None,
+    method_name: str, partial_kwargs: dict[str, t.Any] | None = None
 ) -> t.Callable[..., torch.Tensor]:
     if partial_kwargs is None:
         partial_kwargs = {}
@@ -105,8 +100,7 @@ def make_pytorch_runnable_method(
         with inference_mode_ctx():
             params = params.map(_mapping)
             return getattr(self.model, method_name)(
-                *params.args,
-                **dict(partial_kwargs, **params.kwargs),
+                *params.args, **dict(partial_kwargs, **params.kwargs)
             )
 
     return _run
@@ -115,9 +109,7 @@ def make_pytorch_runnable_method(
 class PyTorchTensorContainer(DataContainer[torch.Tensor, torch.Tensor]):
     @classmethod
     def batches_to_batch(
-        cls,
-        batches: t.Sequence[torch.Tensor],
-        batch_dim: int = 0,
+        cls, batches: t.Sequence[torch.Tensor], batch_dim: int = 0
     ) -> t.Tuple[torch.Tensor, list[int]]:
         batch = torch.cat(tuple(batches), dim=batch_dim)
         indices = list(
@@ -128,10 +120,7 @@ class PyTorchTensorContainer(DataContainer[torch.Tensor, torch.Tensor]):
 
     @classmethod
     def batch_to_batches(
-        cls,
-        batch: torch.Tensor,
-        indices: t.Sequence[int],
-        batch_dim: int = 0,
+        cls, batch: torch.Tensor, indices: t.Sequence[int], batch_dim: int = 0
     ) -> t.List[torch.Tensor]:
         sizes = [indices[i] - indices[i - 1] for i in range(1, len(indices))]
         output: list[torch.Tensor] = torch.split(batch, sizes, dim=batch_dim)
@@ -202,7 +191,5 @@ class PyTorchTensorContainer(DataContainer[torch.Tensor, torch.Tensor]):
 
 
 DataContainerRegistry.register_container(
-    LazyType("torch", "Tensor"),
-    LazyType("torch", "Tensor"),
-    PyTorchTensorContainer,
+    LazyType("torch", "Tensor"), LazyType("torch", "Tensor"), PyTorchTensorContainer
 )

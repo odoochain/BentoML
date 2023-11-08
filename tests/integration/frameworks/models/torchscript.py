@@ -52,14 +52,11 @@ models = [
             Config(
                 test_inputs={
                     "__call__": [
-                        Input(
-                            input_args=[x],
-                            expected=lambda out: out == 5,
-                        )
+                        Input(input_args=[x], expected=lambda out: out == 5)
                         for x in test_x_list
-                    ],
-                },
-            ),
+                    ]
+                }
+            )
         ],
     )
     for model in generate_models()

@@ -280,9 +280,7 @@ def save_model(
     )
 
     if signatures is None:
-        signatures = {
-            "run": {"batchable": False},
-        }
+        signatures = {"run": {"batchable": False}}
         logger.info(
             'Using the default model signature for ONNX (%s) for model "%s".',
             signatures,

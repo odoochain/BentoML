@@ -167,10 +167,7 @@ def human_readable_size(size: t.Union[int, float], decimal_places: int = 2) -> s
 
 
 def split_with_quotes(
-    s: str,
-    sep: str = ",",
-    quote: str = '"',
-    use_regex: bool = False,
+    s: str, sep: str = ",", quote: str = '"', use_regex: bool = False
 ) -> list[str]:
     """
     Split a string with quotes, e.g.:
@@ -181,14 +178,10 @@ def split_with_quotes(
         assert (
             "(" not in sep and ")" not in sep
         ), "sep cannot contain '(' or ')' when using regex"
-        reg = "({quote}[^{quote}]*{quote})|({sep})".format(
-            quote=quote,
-            sep=sep,
-        )
+        reg = "({quote}[^{quote}]*{quote})|({sep})".format(quote=quote, sep=sep)
     else:
         reg = "({quote}[^{quote}]*{quote})|({sep})".format(
-            quote=re.escape(quote),
-            sep=re.escape(sep),
+            quote=re.escape(quote), sep=re.escape(sep)
         )
     raw_parts = re.split(reg, s)
     parts: list[str] = []

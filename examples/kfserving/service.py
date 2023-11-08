@@ -20,9 +20,7 @@ kfserving_input = JSON(pydantic_model=KFServingInputSchema)
 
 
 @svc.api(
-    input=kfserving_input,
-    output=NumpyNdarray(),
-    route="v1/models/iris_classifier",
+    input=kfserving_input, output=NumpyNdarray(), route="v1/models/iris_classifier"
 )
 async def classify(kf_input: KFServingInputSchema) -> np.ndarray:
     instances = np.array(kf_input.instances)

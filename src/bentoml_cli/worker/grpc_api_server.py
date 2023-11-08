@@ -34,10 +34,7 @@ import click
     help="If set, start the server as a bare worker with the given worker ID. Otherwise start a standalone server with a supervisor process.",
 )
 @click.option(
-    "--enable-reflection",
-    type=click.BOOL,
-    is_flag=True,
-    help="Enable reflection.",
+    "--enable-reflection", type=click.BOOL, is_flag=True, help="Enable reflection."
 )
 @click.option(
     "--enable-channelz",
@@ -52,24 +49,9 @@ import click
     help="Maximum number of concurrent incoming streams to allow on a HTTP2 connection.",
     default=None,
 )
-@click.option(
-    "--ssl-certfile",
-    type=str,
-    default=None,
-    help="SSL certificate file",
-)
-@click.option(
-    "--ssl-keyfile",
-    type=str,
-    default=None,
-    help="SSL key file",
-)
-@click.option(
-    "--ssl-ca-certs",
-    type=str,
-    default=None,
-    help="CA certificates file",
-)
+@click.option("--ssl-certfile", type=str, default=None, help="SSL certificate file")
+@click.option("--ssl-keyfile", type=str, default=None, help="SSL key file")
+@click.option("--ssl-ca-certs", type=str, default=None, help="CA certificates file")
 @click.option(
     "--protocol-version",
     type=click.Choice(["v1", "v1alpha1"]),

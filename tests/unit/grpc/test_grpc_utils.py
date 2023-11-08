@@ -92,13 +92,10 @@ def test_parse_empty_package():
     ],
 )
 def test_wrap_rpc_handler(
-    request_streaming: bool,
-    response_streaming: bool,
-    handler_fn: str,
+    request_streaming: bool, response_streaming: bool, handler_fn: str
 ):
     mock_handler = Mock(
-        request_streaming=request_streaming,
-        response_streaming=response_streaming,
+        request_streaming=request_streaming, response_streaming=response_streaming
     )
     fn = Mock()
     assert wrap_rpc_handler(fn, None) is None

@@ -303,9 +303,7 @@ def serve_http_production(
 
                 runner_bind_map[runner.name] = path_to_uri(sockets_path)
                 circus_socket_map[runner.name] = CircusSocket(
-                    name=runner.name,
-                    path=sockets_path,
-                    backlog=backlog,
+                    name=runner.name, path=sockets_path, backlog=backlog
                 )
 
                 watchers.append(
@@ -434,11 +432,7 @@ def serve_http_production(
         raise BentoMLConfigException(f"Invalid host IP address: {host}") from e
 
     circus_socket_map[API_SERVER_NAME] = CircusSocket(
-        name=API_SERVER_NAME,
-        host=host,
-        port=port,
-        family=family,
-        backlog=backlog,
+        name=API_SERVER_NAME, host=host, port=port, family=family, backlog=backlog
     )
 
     ssl_args = construct_ssl_args(
@@ -532,7 +526,7 @@ def serve_http_production(
                     scheme,
                     host,
                     port,
-                ),
+                )
             )
         finally:
             if uds_path is not None:
@@ -551,8 +545,9 @@ def serve_grpc_production(
     ssl_certfile: str | None = Provide[BentoMLContainer.ssl.certfile],
     ssl_keyfile: str | None = Provide[BentoMLContainer.ssl.keyfile],
     ssl_ca_certs: str | None = Provide[BentoMLContainer.ssl.ca_certs],
-    max_concurrent_streams: int
-    | None = Provide[BentoMLContainer.grpc.max_concurrent_streams],
+    max_concurrent_streams: int | None = Provide[
+        BentoMLContainer.grpc.max_concurrent_streams
+    ],
     channelz: bool = Provide[BentoMLContainer.grpc.channelz.enabled],
     reflection: bool = Provide[BentoMLContainer.grpc.reflection.enabled],
     protocol_version: str = LATEST_PROTOCOL_VERSION,
@@ -605,9 +600,7 @@ def serve_grpc_production(
 
                 runner_bind_map[runner.name] = path_to_uri(sockets_path)
                 circus_socket_map[runner.name] = CircusSocket(
-                    name=runner.name,
-                    path=sockets_path,
-                    backlog=backlog,
+                    name=runner.name, path=sockets_path, backlog=backlog
                 )
 
                 watchers.append(
@@ -721,9 +714,7 @@ def serve_grpc_production(
     logger.debug("Runner map: %s", runner_bind_map)
 
     ssl_args = construct_ssl_args(
-        ssl_certfile=ssl_certfile,
-        ssl_keyfile=ssl_keyfile,
-        ssl_ca_certs=ssl_ca_certs,
+        ssl_certfile=ssl_certfile, ssl_keyfile=ssl_keyfile, ssl_ca_certs=ssl_ca_certs
     )
     scheme = "https" if BentoMLContainer.ssl.enabled.get() else "http"
 
@@ -763,10 +754,7 @@ def serve_grpc_production(
             api_server_args.append("--enable-channelz")
         if max_concurrent_streams:
             api_server_args.extend(
-                [
-                    "--max-concurrent-streams",
-                    str(max_concurrent_streams),
-                ]
+                ["--max-concurrent-streams", str(max_concurrent_streams)]
             )
 
         if development_mode:
@@ -854,7 +842,7 @@ def serve_grpc_production(
                     scheme,
                     host,
                     port,
-                ),
+                )
             )
         finally:
             if uds_path is not None:

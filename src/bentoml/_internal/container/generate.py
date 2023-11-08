@@ -186,8 +186,7 @@ def generate_containerfile(
             loader=FileSystemLoader(TEMPLATES_PATH, followlinks=True)
         )
         template = environment.get_template(
-            user_templates,
-            globals={"bento_base_template": template, **J2_FUNCTION},
+            user_templates, globals={"bento_base_template": template, **J2_FUNCTION}
         )
 
     return template.render(

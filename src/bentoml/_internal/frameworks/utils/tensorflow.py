@@ -153,9 +153,7 @@ def normalize_spec(value: t.Any) -> "tf_ext.TypeSpec":
 
 
 def cast_py_args_to_tf_function_args(
-    signature: list[tf_ext.TensorSpec],
-    *args: t.Any,
-    **kwargs: t.Any,
+    signature: list[tf_ext.TensorSpec], *args: t.Any, **kwargs: t.Any
 ) -> tuple[t.Any, ...]:
     """
     Cast python arguments (args, kwargs) to tensorflow function arguments.
@@ -171,10 +169,7 @@ def cast_py_args_to_tf_function_args(
     import inspect
 
     parameters = [
-        inspect.Parameter(
-            name=s.name,
-            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-        )
+        inspect.Parameter(name=s.name, kind=inspect.Parameter.POSITIONAL_OR_KEYWORD)
         for s in signature
     ]
     func_sig = inspect.Signature(parameters=parameters)
@@ -192,7 +187,7 @@ def cast_py_args_to_tf_function_args(
 
 
 def get_input_signatures_v2(
-    func: tf_ext.RestoredFunction,
+    func: tf_ext.RestoredFunction
 ) -> list[list[tf_ext.TensorSpec]]:
     if hasattr(func, "concrete_functions") and func.concrete_functions:
         # tensorflow will generate concrete_functions:
@@ -210,7 +205,7 @@ def get_input_signatures_v2(
 
 
 def get_output_signatures_v2(
-    func: tf_ext.RestoredFunction,
+    func: tf_ext.RestoredFunction
 ) -> list[tuple[tf_ext.TensorSpec, ...] | tf_ext.TensorSpec]:
     if hasattr(func, "concrete_functions") and func.concrete_functions:
         return [
@@ -227,7 +222,7 @@ def get_output_signatures_v2(
 
 
 def get_input_signatures(
-    func: tf_ext.DecoratedFunction,
+    func: tf_ext.DecoratedFunction
 ) -> list[tuple[tf_ext.InputSignature, ...]]:
     if hasattr(func, "function_spec"):  # RestoredFunction
         func_spec: "tf_ext.FunctionSpec" = getattr(func, "function_spec")
@@ -264,7 +259,7 @@ def get_input_signatures(
 
 
 def get_output_signature(
-    func: tf_ext.DecoratedFunction,
+    func: tf_ext.DecoratedFunction
 ) -> tf_ext.ConcreteFunction | t.Tuple[t.Any, ...] | dict[str, tf_ext.TypeSpec]:
     if hasattr(func, "function_spec"):  # for RestoredFunction
         # assume all concrete functions have same signature
@@ -295,9 +290,7 @@ def get_arg_names(func: "tf_ext.DecoratedFunction") -> t.Optional[t.List[str]]:
     return list()
 
 
-def get_restorable_functions(
-    m: tf_ext.Trackable,
-) -> dict[str, tf_ext.RestoredFunction]:
+def get_restorable_functions(m: tf_ext.Trackable) -> dict[str, tf_ext.RestoredFunction]:
     function_map = {k: getattr(m, k, None) for k in dir(m)}
     return {
         k: t.cast("tf_ext.RestoredFunction", v)
@@ -338,9 +331,7 @@ def _pretty_format_positional(positional: t.Optional["tf_ext.TensorSignature"]) 
 
 
 def pretty_format_function(
-    function: tf_ext.DecoratedFunction,
-    obj: str = "<object>",
-    name: str = "<function>",
+    function: tf_ext.DecoratedFunction, obj: str = "<object>", name: str = "<function>"
 ) -> str:
     ret = ""
     outs = get_output_signature(function)
@@ -402,9 +393,7 @@ def cast_tensor_by_spec(
         _input
     ) or LazyType["tf_ext.CastableTensorType"](
         "tensorflow.python.framework.ops.EagerTensor"
-    ).isinstance(
-        _input
-    ):
+    ).isinstance(_input):
         # TensorFlow Issues #43038
         # pylint: disable=unexpected-keyword-arg, no-value-for-parameter
         return t.cast(
@@ -456,7 +445,8 @@ class tf_function_wrapper:  # pragma: no cover
         # how signature with kwargs works?
         # https://github.com/tensorflow/tensorflow/blob/v2.0.0/tensorflow/python/eager/function.py#L1519
         transformed_args: t.Tuple[t.Any, ...] = tuple(
-            cast_tensor_by_spec(arg, spec) for arg, spec in zip(args, self.arg_specs)  # type: ignore[arg-type]
+            cast_tensor_by_spec(arg, spec)
+            for arg, spec in zip(args, self.arg_specs)  # type: ignore[arg-type]
         )
 
         transformed_kwargs = {

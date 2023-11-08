@@ -199,9 +199,7 @@ def fixture_bento_model():
         signatures={},
         context=TEST_MODEL_CONTEXT,
         options=ModelOptions(option_a=1, option_b="foo", option_c=[0.1, 0.2]),
-        custom_objects={
-            "add": AdditionClass(add_num_1),
-        },
+        custom_objects={"add": AdditionClass(add_num_1)},
     )
     model.flush()
     return model

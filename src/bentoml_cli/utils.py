@@ -31,8 +31,7 @@ if t.TYPE_CHECKING:
         __click_params__: list[Option]
 
         def __call__(  # pylint: disable=no-method-argument
-            *args: P.args,
-            **kwargs: P.kwargs,
+            *args: P.args, **kwargs: P.kwargs
         ) -> F[P]:
             ...
 
@@ -324,10 +323,7 @@ class BentoMLCommandGroup(click.Group):
                     return cli_events_map[cmd_group.name][command_name](
                         cmd_group.name, command_name, return_value
                     )
-                return CliEvent(
-                    cmd_group=cmd_group.name,
-                    cmd_name=command_name,
-                )
+                return CliEvent(cmd_group=cmd_group.name, cmd_name=command_name)
 
             try:
                 return_value = func(*args, **kwargs)

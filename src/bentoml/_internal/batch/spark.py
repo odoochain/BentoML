@@ -64,7 +64,7 @@ def _get_process(
     bento_tag: Tag, api_name: str
 ) -> t.Callable[[t.Iterable[RecordBatch]], t.Generator[RecordBatch, None, None]]:
     def process(
-        iterator: t.Iterable[RecordBatch],
+        iterator: t.Iterable[RecordBatch]
     ) -> t.Generator[RecordBatch, None, None]:
         svc = _load_bento_spark(bento_tag)
 

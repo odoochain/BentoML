@@ -67,10 +67,12 @@ class Server(aio._server.Server):
         self,
         bento_service: Service,
         bind_address: str,
-        max_message_length: int
-        | None = Provide[BentoMLContainer.grpc.max_message_length],
-        maximum_concurrent_rpcs: int
-        | None = Provide[BentoMLContainer.grpc.maximum_concurrent_rpcs],
+        max_message_length: int | None = Provide[
+            BentoMLContainer.grpc.max_message_length
+        ],
+        maximum_concurrent_rpcs: int | None = Provide[
+            BentoMLContainer.grpc.maximum_concurrent_rpcs
+        ],
         enable_reflection: bool = False,
         enable_channelz: bool = False,
         max_concurrent_streams: int | None = None,
@@ -298,11 +300,7 @@ class Server(aio._server.Server):
 
         service_names = self.service_names
         # register custom servicer
-        for (
-            user_servicer,
-            add_servicer_fn,
-            user_service_names,
-        ) in self.mount_servicers:
+        for user_servicer, add_servicer_fn, user_service_names in self.mount_servicers:
             add_servicer_fn(user_servicer(), self)
             service_names += tuple(user_service_names)
         if self.enable_channelz:
@@ -330,7 +328,8 @@ class Server(aio._server.Server):
         # mark all services as healthy
         for service in service_names:
             await self.health_servicer.set(
-                service, pb_health.HealthCheckResponse.SERVING  # type: ignore (no types available)
+                service,
+                pb_health.HealthCheckResponse.SERVING,  # type: ignore (no types available)
             )
         await self.start()
 

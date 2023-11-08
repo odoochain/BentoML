@@ -79,9 +79,7 @@ def get_environment(
         try:
             bento = bento_store.get(bento_identifier)
             return EnvManager.from_bento(
-                env_type=env,
-                bento=bento,
-                is_ephemeral=False,
+                env_type=env, bento=bento, is_ephemeral=False
             ).environment
         except BentoNotFound:
             # service definition

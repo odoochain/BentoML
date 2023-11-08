@@ -33,11 +33,7 @@ class MonitorBase(t.Generic[DT]):
 
     PRESERVED_COLUMNS: tuple[str, ...] = ()
 
-    def __init__(
-        self,
-        name: str,
-        **_: t.Any,
-    ) -> None:
+    def __init__(self, name: str, **_: t.Any) -> None:
         self.name = name
         self.columns_schema: dict[str, dict[str, str]] | None = None
 
@@ -88,13 +84,7 @@ class MonitorBase(t.Generic[DT]):
         """
         raise NotImplementedError()
 
-    def log(
-        self,
-        data: DT,
-        name: str,
-        role: str,
-        data_type: str,
-    ) -> None:
+    def log(self, data: DT, name: str, role: str, data_type: str) -> None:
         """
         log a data with column name, role and type to the current record
         """
@@ -117,26 +107,15 @@ class MonitorBase(t.Generic[DT]):
             columns = MON_COLUMN_VAR.get()
             assert columns is not None
             if name in columns:
-                logger.warning(
-                    "Column name %s is duplicated, will be ignored.",
-                    name,
-                )
+                logger.warning("Column name %s is duplicated, will be ignored.", name)
             else:
-                columns[name] = {
-                    "name": name,
-                    "role": role,
-                    "type": data_type,
-                }
+                columns[name] = {"name": name, "role": role, "type": data_type}
         datas = MON_DATAS_VAR.get()
         assert datas is not None
         datas[name].append(data)
 
     def log_batch(
-        self,
-        data_batch: t.Iterable[DT],
-        name: str,
-        role: str,
-        data_type: str,
+        self, data_batch: t.Iterable[DT], name: str, role: str, data_type: str
     ) -> None:
         """
         Log a batch of data. The data will be logged as a single column.
@@ -150,9 +129,7 @@ class MonitorBase(t.Generic[DT]):
             )
 
     def log_table(
-        self,
-        data: t.Iterable[t.Iterable[DT]],
-        schema: dict[str, str],
+        self, data: t.Iterable[t.Iterable[DT]], schema: dict[str, str]
     ) -> None:
         logger.warning(
             "log_table() is not implemented yet. Will ignore the data. Please use log() or log_batch() instead."
@@ -180,17 +157,11 @@ class NoOpMonitor(MonitorBase[t.Any]):
         pass
 
     def log_batch(
-        self,
-        data_batch: t.Iterable[t.Any],
-        name: str,
-        role: str,
-        data_type: str,
+        self, data_batch: t.Iterable[t.Any], name: str, role: str, data_type: str
     ) -> None:
         pass
 
     def log_table(
-        self,
-        data: t.Iterable[t.Iterable[t.Any]],
-        schema: dict[str, str],
+        self, data: t.Iterable[t.Iterable[t.Any]], schema: dict[str, str]
     ) -> None:
         pass

@@ -135,7 +135,7 @@ class DistroSpec:
         validator=attr.validators.deep_iterable(
             member_validator=attr.validators.in_(SUPPORTED_PYTHON_VERSIONS),
             iterable_validator=attr.validators.instance_of(ListStr),
-        ),
+        )
     )
 
     supported_cuda_versions: list[str] | None = attr.field(

@@ -150,14 +150,12 @@ def test_generic_arguments(framework: types.ModuleType, test_model: FrameworkTes
         "pytest-metadata-vSW4": [0, 9, 2],
         "pytest-metadata-qJJ3": "Wy5M",
     }
-    bento_model = framework.save_model(
-        test_model.name,
-        test_model.model,
-        **kwargs,
-    )
+    bento_model = framework.save_model(test_model.name, test_model.model, **kwargs)
 
     for meth in meths:
-        assert bento_model.info.signatures[meth] == ModelSignature.from_dict(kwargs["signatures"][meth])  # type: ignore
+        assert bento_model.info.signatures[meth] == ModelSignature.from_dict(
+            kwargs["signatures"][meth]
+        )  # type: ignore
 
     assert bento_model.info.labels == kwargs["labels"]
     assert bento_model.custom_objects["pytest-custom-object-r7BU"].mean_[0] == 5.5
@@ -180,10 +178,7 @@ def test_get(
     assert bento_model == bento_model_from_str
 
 
-def test_get_runnable(
-    framework: types.ModuleType,
-    saved_model: bentoml.Model,
-):
+def test_get_runnable(framework: types.ModuleType, saved_model: bentoml.Model):
     runnable = framework.get_runnable(saved_model)
 
     assert isinstance(
@@ -216,10 +211,7 @@ def test_load(
                 )
 
 
-def test_runnable(
-    test_model: FrameworkTestModel,
-    saved_model: bentoml.Model,
-):
+def test_runnable(test_model: FrameworkTestModel, saved_model: bentoml.Model):
     for config in test_model.configurations:
         runner = saved_model.with_options(**config.load_kwargs).to_runner()
         runner.init_local()
@@ -229,10 +221,7 @@ def test_runnable(
         runner.destroy()
 
 
-def test_runner_batching(
-    test_model: FrameworkTestModel,
-    saved_model: bentoml.Model,
-):
+def test_runner_batching(test_model: FrameworkTestModel, saved_model: bentoml.Model):
     from bentoml._internal.runner.container import AutoContainer
     from bentoml._internal.runner.utils import Params
     from bentoml._internal.runner.utils import payload_paramss_to_batch_params

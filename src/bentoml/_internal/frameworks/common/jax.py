@@ -41,9 +41,7 @@ __all__ = ["jax", "jnp", "jaxlib", "JaxArrayContainer"]
 class JaxArrayContainer(DataContainer[jax.Array, jax.Array]):
     @classmethod
     def batches_to_batch(
-        cls,
-        batches: t.Sequence[jax.Array],
-        batch_dim: int = 0,
+        cls, batches: t.Sequence[jax.Array], batch_dim: int = 0
     ) -> tuple[jax.Array, list[int]]:
         batch: jax.Array = jnp.concatenate(batches, axis=batch_dim)
         indices: list[int] = list(
@@ -54,40 +52,26 @@ class JaxArrayContainer(DataContainer[jax.Array, jax.Array]):
 
     @classmethod
     def batch_to_batches(
-        cls,
-        batch: jax.Array,
-        indices: t.Sequence[int],
-        batch_dim: int = 0,
+        cls, batch: jax.Array, indices: t.Sequence[int], batch_dim: int = 0
     ) -> list[jax.Array]:
         return jnp.split(batch, indices[1:-1], axis=batch_dim)
 
     @classmethod
     @inject
-    def to_payload(
-        cls,
-        batch: jax.Array,
-        batch_dim: int = 0,
-    ) -> Payload:
+    def to_payload(cls, batch: jax.Array, batch_dim: int = 0) -> Payload:
         return cls.create_payload(
-            pickle.dumps(np.asarray(batch)),
-            batch.shape[batch_dim],
+            pickle.dumps(np.asarray(batch)), batch.shape[batch_dim]
         )
 
     @classmethod
     @inject
-    def from_payload(
-        cls,
-        payload: Payload,
-    ) -> jax.Array:
+    def from_payload(cls, payload: Payload) -> jax.Array:
         return jnp.asarray(pickle.loads(payload.data))
 
     @classmethod
     @inject
     def batch_to_payloads(
-        cls,
-        batch: jax.Array,
-        indices: t.Sequence[int],
-        batch_dim: int = 0,
+        cls, batch: jax.Array, indices: t.Sequence[int], batch_dim: int = 0
     ) -> t.List[Payload]:
         batches = cls.batch_to_batches(batch, indices, batch_dim)
         payloads = [cls.to_payload(subbatch, batch_dim) for subbatch in batches]
@@ -96,9 +80,7 @@ class JaxArrayContainer(DataContainer[jax.Array, jax.Array]):
     @classmethod
     @inject
     def from_batch_payloads(
-        cls,
-        payloads: t.Sequence[Payload],
-        batch_dim: int = 0,
+        cls, payloads: t.Sequence[Payload], batch_dim: int = 0
     ) -> tuple[jax.Array, list[int]]:
         batches = [cls.from_payload(payload) for payload in payloads]
         return cls.batches_to_batch(batches, batch_dim)
@@ -111,7 +93,5 @@ DataContainerRegistry.register_container(
 )
 
 DataContainerRegistry.register_container(
-    LazyType("jax", "Array"),
-    LazyType("jax", "Array"),
-    JaxArrayContainer,
+    LazyType("jax", "Array"), LazyType("jax", "Array"), JaxArrayContainer
 )

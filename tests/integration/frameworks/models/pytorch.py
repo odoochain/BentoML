@@ -39,14 +39,11 @@ pytorch_model = FrameworkTestModel(
         Config(
             test_inputs={
                 "__call__": [
-                    Input(
-                        input_args=[x],
-                        expected=lambda out: out == expected_output,
-                    )
+                    Input(input_args=[x], expected=lambda out: out == expected_output)
                     for x in [test_np, test_tensor]
-                ],
-            },
-        ),
+                ]
+            }
+        )
     ],
 )
 

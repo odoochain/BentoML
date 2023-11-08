@@ -10,12 +10,7 @@ import click
 
 @click.command()
 @click.argument("bento_identifier", type=click.STRING, required=False, default=".")
-@click.option(
-    "--runner-name",
-    type=click.STRING,
-    required=True,
-    envvar="RUNNER_NAME",
-)
+@click.option("--runner-name", type=click.STRING, required=True, envvar="RUNNER_NAME")
 @click.option("--fd", type=click.INT, required=True)
 @click.option("--working-dir", required=False, default=None, help="Working directory")
 @click.option(
@@ -40,9 +35,7 @@ import click
     help="The environment variables to pass to the worker process. The format is a JSON string, e.g. '{0: {\"CUDA_VISIBLE_DEVICES\": 0}}'.",
 )
 @click.option(
-    "--timeout",
-    type=click.INT,
-    help="Specify the timeout (seconds) for runner",
+    "--timeout", type=click.INT, help="Specify the timeout (seconds) for runner"
 )
 @click.option(
     "--prometheus-dir",

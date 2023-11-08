@@ -21,7 +21,9 @@ if t.TYPE_CHECKING:
 
 
 def parse_delete_targets_argument_callback(
-    ctx: Context, params: Parameter, value: t.Any  # pylint: disable=unused-argument
+    ctx: Context,
+    params: Parameter,
+    value: t.Any,  # pylint: disable=unused-argument
 ) -> t.Any:
     if value is None:
         return value
@@ -64,10 +66,7 @@ def add_model_management_commands(cli: Group) -> None:
     @model_cli.command()
     @click.argument("model_tag", type=click.STRING)
     @click.option(
-        "-o",
-        "--output",
-        type=click.Choice(["json", "yaml", "path"]),
-        default="yaml",
+        "-o", "--output", type=click.Choice(["json", "yaml", "path"]), default="yaml"
     )
     def get(model_tag: str, output: str) -> None:  # type: ignore (not accessed)
         """Print Model details by providing the model_tag
@@ -91,10 +90,7 @@ def add_model_management_commands(cli: Group) -> None:
     @model_cli.command(name="list")
     @click.argument("model_name", type=click.STRING, required=False)
     @click.option(
-        "-o",
-        "--output",
-        type=click.Choice(["json", "yaml", "table"]),
-        default="table",
+        "-o", "--output", type=click.Choice(["json", "yaml", "table"]), default="table"
     )
     def list_models(model_name: str, output: str) -> None:  # type: ignore (not accessed)
         """List Models in local store
@@ -136,10 +132,7 @@ def add_model_management_commands(cli: Group) -> None:
             table.add_column("Creation Time")
             for model in res:
                 table.add_row(
-                    model["tag"],
-                    model["module"],
-                    model["size"],
-                    model["creation_time"],
+                    model["tag"], model["module"], model["size"], model["creation_time"]
                 )
             console.print(table)
 
@@ -303,10 +296,7 @@ def add_model_management_commands(cli: Group) -> None:
         help="Forced push to remote model store even if it exists in remote",
     )
     @click.option(
-        "-t",
-        "--threads",
-        default=10,
-        help="Number of threads to use for upload",
+        "-t", "--threads", default=10, help="Number of threads to use for upload"
     )
     @click.pass_obj
     def push(shared_options: SharedOptions, model_tag: str, force: bool, threads: int):  # type: ignore (not accessed)

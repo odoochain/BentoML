@@ -28,11 +28,7 @@ if __name__ == "__main__":
         )
     else:
         bento = bentoml.get(tag)
-        server = bentoml.serve(
-            bento,
-            server_type=server_type,
-            production=True,
-        )
+        server = bentoml.serve(bento, server_type=server_type, production=True)
         try:
             while True:
                 bentoml.client.Client.wait_until_server_ready(

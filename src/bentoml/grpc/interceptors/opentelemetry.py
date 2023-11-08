@@ -220,10 +220,7 @@ class AsyncOpenTelemetryServerInterceptor(aio.ServerInterceptor):
             ipv4_addr = context.peer().split(",")[0]
             ip, port = ipv4_addr.split(":", 1)[1].rsplit(":", 1)
             attributes.update(
-                {
-                    SpanAttributes.NET_PEER_IP: ip,
-                    SpanAttributes.NET_PEER_PORT: port,
-                }
+                {SpanAttributes.NET_PEER_IP: ip, SpanAttributes.NET_PEER_PORT: port}
             )
             # other telemetry sources add this, so we will too
             if ip in ("[::1]", "127.0.0.1"):

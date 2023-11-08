@@ -106,9 +106,7 @@ def make_keras_sequential_model() -> tf.keras.models.Model:
 def make_keras_functional_model() -> tf.keras.Model:
     x = tf.keras.layers.Input((5,), dtype=tf.float64, name="x")
     y = tf.keras.layers.Dense(
-        6,
-        name="out",
-        kernel_initializer=tf.keras.initializers.Ones(),
+        6, name="out", kernel_initializer=tf.keras.initializers.Ones()
     )(x)
     return tf.keras.Model(inputs=x, outputs=y)
 
@@ -139,14 +137,10 @@ native_multi_input_model = FrameworkTestModel(
                         input_args=[i, i],
                         expected=lambda out: np.isclose(out, [[60.0]]).all(),
                     )
-                    for i in [
-                        input_tensor,
-                        input_array,
-                        input_data,
-                    ]
-                ],
+                    for i in [input_tensor, input_array, input_data]
+                ]
             },
-        ),
+        )
     ],
 )
 
@@ -162,8 +156,8 @@ native_model = FrameworkTestModel(
                         expected=lambda out: np.isclose(out, [[15.0]]).all(),
                     )
                     for i in [input_tensor, input_array, input_data]
-                ],
-            },
+                ]
+            }
         ),
         Config(
             test_inputs={
@@ -171,9 +165,9 @@ native_model = FrameworkTestModel(
                     Input(
                         input_args=[ragged_tensor],
                         expected=lambda out: np.isclose(out, [[15.0]] * 3).all(),
-                    ),
-                ],
-            },
+                    )
+                ]
+            }
         ),
     ],
 )
@@ -190,9 +184,9 @@ native_multi_output_model = FrameworkTestModel(
                         expected=lambda out: np.isclose(out[0], input_array * 2).all(),
                     )
                     for i in [input_tensor_f32, input_array_i32]
-                ],
-            },
-        ),
+                ]
+            }
+        )
     ],
 )
 
@@ -213,10 +207,7 @@ native_multi_output_model2 = FrameworkTestModel(
         Config(
             test_inputs={
                 "__call__": [
-                    Input(
-                        input_args=[i],
-                        expected=lambda out: np.isclose(out, i).all(),
-                    )
+                    Input(input_args=[i], expected=lambda out: np.isclose(out, i).all())
                     for i in [
                         input_tensor,
                         input_tensor_f32,
@@ -236,9 +227,9 @@ native_multi_output_model2 = FrameworkTestModel(
                         input_array2,
                         input_array2_i32,
                     ]
-                ],
-            },
-        ),
+                ]
+            }
+        )
     ],
 )
 
@@ -263,20 +254,13 @@ keras_models = [
                             input_args=[inp],
                             expected=lambda out: np.isclose(out, [[15.0]]).all(),
                         ),
-                    ],
-                },
-            ),
+                    ]
+                }
+            )
         ],
     )
-    for model in [
-        make_keras_functional_model(),
-        make_keras_sequential_model(),
-    ]
-    for inp in [
-        input_tensor,
-        input_array,
-        input_data,
-    ]
+    for model in [make_keras_functional_model(), make_keras_sequential_model()]
+    for inp in [input_tensor, input_array, input_data]
 ]
 
 models: list[FrameworkTestModel] = keras_models + [

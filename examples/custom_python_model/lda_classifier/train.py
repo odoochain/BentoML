@@ -31,9 +31,7 @@ def main():
 
     # Save model with BentoML
     saved_model = bentoml.picklable_model.save_model(
-        "iris_clf_lda",
-        lda,
-        signatures={"predict": {"batchable": True}},
+        "iris_clf_lda", lda, signatures={"predict": {"batchable": True}}
     )
     print(f"Model saved: {saved_model}")
 

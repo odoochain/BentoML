@@ -288,10 +288,7 @@ class MultiPartParser:
 
 def file_body_to_message(f: UploadFile):
     async def res():
-        return {
-            "type": "http.request",
-            "body": await f.read(),
-        }
+        return {"type": "http.request", "body": await f.read()}
 
     return res
 

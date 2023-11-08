@@ -41,23 +41,10 @@ import click
     default=None,
     help="If set, start the server as a bare worker with the given worker ID. Otherwise start a standalone server with a supervisor process.",
 )
+@click.option("--ssl-certfile", type=str, default=None, help="SSL certificate file")
+@click.option("--ssl-keyfile", type=str, default=None, help="SSL key file")
 @click.option(
-    "--ssl-certfile",
-    type=str,
-    default=None,
-    help="SSL certificate file",
-)
-@click.option(
-    "--ssl-keyfile",
-    type=str,
-    default=None,
-    help="SSL key file",
-)
-@click.option(
-    "--ssl-keyfile-password",
-    type=str,
-    default=None,
-    help="SSL keyfile password",
+    "--ssl-keyfile-password", type=str, default=None, help="SSL keyfile password"
 )
 @click.option(
     "--ssl-version",
@@ -71,12 +58,7 @@ import click
     default=None,
     help="Whether client certificate is required (see stdlib 'ssl' module)",
 )
-@click.option(
-    "--ssl-ca-certs",
-    type=str,
-    default=None,
-    help="CA certificates file",
-)
+@click.option("--ssl-ca-certs", type=str, default=None, help="CA certificates file")
 @click.option(
     "--ssl-ciphers",
     type=str,
@@ -91,11 +73,7 @@ import click
     default=False,
     show_default=True,
 )
-@click.option(
-    "--timeout",
-    type=click.INT,
-    help="Specify the timeout for API server",
-)
+@click.option("--timeout", type=click.INT, help="Specify the timeout for API server")
 def main(
     bento_identifier: str,
     fd: int,

@@ -81,8 +81,7 @@ def _openapi_types(item: t.Any) -> str:  # pragma: no cover
 
 
 def _dataframe_openapi_schema(
-    dtype: bool | ext.PdDTypeArg | None,
-    orient: ext.DataFrameOrient = None,
+    dtype: bool | ext.PdDTypeArg | None, orient: ext.DataFrameOrient = None
 ) -> Schema:  # pragma: no cover
     if isinstance(dtype, dict):
         if orient == "records":
@@ -1128,7 +1127,7 @@ class PandasSeries(
                 elif len(fieldpb) > 1:
                     # when there are more than two values provided in the proto.
                     raise InvalidArgument(
-                        f"Array contents can only be one of given values key. Use one of '{fieldpb}' instead.",
+                        f"Array contents can only be one of given values key. Use one of '{fieldpb}' instead."
                     ) from None
                 dtype = fieldpb_to_npdtype_map()[fieldpb[0]]
                 data = getattr(field, fieldpb[0])

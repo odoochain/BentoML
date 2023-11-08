@@ -48,8 +48,8 @@ cancer_model = FrameworkTestModel(
                             out, [[0.92220132, 0.07779868]]
                         ).all(),
                     ),
-                ],
-            },
+                ]
+            }
         ),
         Config(
             test_inputs={
@@ -66,8 +66,8 @@ cancer_model = FrameworkTestModel(
                             out, [[0.92220132, 0.07779868]]
                         ).all(),
                     ),
-                ],
-            },
+                ]
+            }
         ),
     ],
 )

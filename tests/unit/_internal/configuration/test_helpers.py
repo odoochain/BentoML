@@ -150,10 +150,7 @@ def test_expand_env_in_values(monkeypatch: pytest.MonkeyPatch):
     assert data == {
         "foo": "",
         "foo-list": ["default1", "default2"],
-        "bar": {
-            "name": "bardefault",
-            "bar-list": ["default1", "default2"],
-        },
+        "bar": {"name": "bardefault", "bar-list": ["default1", "default2"]},
     }
     data = {
         "foo": "${FOO}",
@@ -175,8 +172,5 @@ def test_expand_env_in_values(monkeypatch: pytest.MonkeyPatch):
         assert data == {
             "foo": "foo",
             "foo-list": ["foo-item1", "foo-item2"],
-            "bar": {
-                "name": "bar-name",
-                "bar-list": ["bar-item1", "bar-item2"],
-            },
+            "bar": {"name": "bar-name", "bar-list": ["bar-item1", "bar-item2"]},
         }

@@ -69,10 +69,7 @@ def start_runner_server(
                     if host is None:
                         host = "127.0.0.1"
                     circus_socket_map[runner.name] = CircusSocket(
-                        name=runner.name,
-                        host=host,
-                        port=port,
-                        backlog=backlog,
+                        name=runner.name, host=host, port=port, backlog=backlog
                     )
 
                     watchers.append(
@@ -126,8 +123,7 @@ def start_runner_server(
             )
 
     arbiter = create_standalone_arbiter(
-        watchers=watchers,
-        sockets=list(circus_socket_map.values()),
+        watchers=watchers, sockets=list(circus_socket_map.values())
     )
     with track_serve(svc, production=True, component=RUNNER):
         arbiter.start(
@@ -136,7 +132,7 @@ def start_runner_server(
                 bento_identifier,
                 host,
                 port,
-            ),
+            )
         )
 
 
@@ -185,10 +181,7 @@ def start_http_server(
     circus_socket_map: dict[str, CircusSocket] = {}
     logger.debug("Runner map: %s", runner_map)
     circus_socket_map[API_SERVER_NAME] = CircusSocket(
-        name=API_SERVER_NAME,
-        host=host,
-        port=port,
-        backlog=backlog,
+        name=API_SERVER_NAME, host=host, port=port, backlog=backlog
     )
     ssl_args = construct_ssl_args(
         ssl_certfile=ssl_certfile,
@@ -235,8 +228,7 @@ def start_http_server(
         )
 
     arbiter = create_standalone_arbiter(
-        watchers=watchers,
-        sockets=list(circus_socket_map.values()),
+        watchers=watchers, sockets=list(circus_socket_map.values())
     )
     with track_serve(svc, production=True, component=API_SERVER):
         arbiter.start(
@@ -247,7 +239,7 @@ def start_http_server(
                 scheme,
                 host,
                 port,
-            ),
+            )
         )
 
 
@@ -262,8 +254,9 @@ def start_grpc_server(
     api_workers: int = Provide[BentoMLContainer.api_server_workers],
     reflection: bool = Provide[BentoMLContainer.grpc.reflection.enabled],
     channelz: bool = Provide[BentoMLContainer.grpc.channelz.enabled],
-    max_concurrent_streams: int
-    | None = Provide[BentoMLContainer.grpc.max_concurrent_streams],
+    max_concurrent_streams: int | None = Provide[
+        BentoMLContainer.grpc.max_concurrent_streams
+    ],
     ssl_certfile: str | None = Provide[BentoMLContainer.ssl.certfile],
     ssl_keyfile: str | None = Provide[BentoMLContainer.ssl.keyfile],
     ssl_ca_certs: str | None = Provide[BentoMLContainer.ssl.ca_certs],
@@ -297,9 +290,7 @@ def start_grpc_server(
     circus_socket_map: dict[str, CircusSocket] = {}
     logger.debug("Runner map: %s", runner_map)
     ssl_args = construct_ssl_args(
-        ssl_certfile=ssl_certfile,
-        ssl_keyfile=ssl_keyfile,
-        ssl_ca_certs=ssl_ca_certs,
+        ssl_certfile=ssl_certfile, ssl_keyfile=ssl_keyfile, ssl_ca_certs=ssl_ca_certs
     )
     scheme = "https" if BentoMLContainer.ssl.enabled.get() else "http"
     with contextlib.ExitStack() as port_stack:
@@ -332,12 +323,7 @@ def start_grpc_server(
         if channelz:
             args.append("--enable-channelz")
         if max_concurrent_streams:
-            args.extend(
-                [
-                    "--max-concurrent-streams",
-                    str(max_concurrent_streams),
-                ]
-            )
+            args.extend(["--max-concurrent-streams", str(max_concurrent_streams)])
 
         watchers.append(
             create_watcher(
@@ -397,5 +383,5 @@ def start_grpc_server(
                 scheme,
                 host,
                 port,
-            ),
+            )
         )

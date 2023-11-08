@@ -9,17 +9,12 @@ logging.basicConfig(level=logging.WARN)
 
 if __name__ == "__main__":
     # Create Transformers pipelines from pretrained models
-    generation_pipeline_1 = transformers.pipeline(
-        task="text-generation",
-        model="gpt2",
+    generation_pipeline_1 = transformers.pipeline(task="text-generation", model="gpt2")
+    generation_pipeline_2 = transformers.pipeline(
+        task="text-generation", model="distilgpt2"
     )
     generation_pipeline_2 = transformers.pipeline(
-        task="text-generation",
-        model="distilgpt2",
-    )
-    generation_pipeline_2 = transformers.pipeline(
-        task="text-generation",
-        model="gpt2-medium",
+        task="text-generation", model="gpt2-medium"
     )
 
     classification_pipeline = transformers.pipeline(

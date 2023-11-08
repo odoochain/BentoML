@@ -33,10 +33,7 @@ svc = bentoml.Service(
 input_spec = PandasDataFrame.from_sample(sample_input)
 
 
-async def _is_fraud_async(
-    runner: bentoml.Runner,
-    input_df: pd.DataFrame,
-):
+async def _is_fraud_async(runner: bentoml.Runner, input_df: pd.DataFrame):
     results = await runner.predict_proba.async_run(input_df)
     predictions = np.argmax(results, axis=1)  # 0 is not fraud, 1 is fraud
     return {"is_fraud": list(map(bool, predictions)), "is_fraud_prob": results[:, 1]}

@@ -58,9 +58,7 @@ def test_bento_info(tmpdir: Path):
     )
     runners = [runner_a]
     api_predict = BentoApiInfo(
-        name="predict",
-        input_type="NumpyNdarray",
-        output_type="NumpyNdarray",
+        name="predict", input_type="NumpyNdarray", output_type="NumpyNdarray"
     )
     apis = [api_predict]
 
@@ -151,17 +149,9 @@ def build_test_bento() -> Bento:
         "simplebento.py:svc",
         include=["*.py", "config.json", "somefile", "*dir*", ".bentoignore"],
         exclude=["*.storage", "/somefile", "/subdir2"],
-        conda={
-            "environment_yml": "./environment.yaml",
-        },
-        docker={
-            "setup_script": "./setup_docker_container.sh",
-        },
-        labels={
-            "team": "foo",
-            "dataset_version": "abc",
-            "framework": "pytorch",
-        },
+        conda={"environment_yml": "./environment.yaml"},
+        docker={"setup_script": "./setup_docker_container.sh"},
+        labels={"team": "foo", "dataset_version": "abc", "framework": "pytorch"},
         models=["testmodel"],
     )
 

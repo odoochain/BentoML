@@ -79,9 +79,7 @@ def get(tag_like: str | Tag) -> bentoml.Model:
     return model
 
 
-def load_model(
-    bento_model: str | Tag | bentoml.Model,
-) -> xgb.Booster | xgb.XGBModel:
+def load_model(bento_model: str | Tag | bentoml.Model) -> xgb.Booster | xgb.XGBModel:
     """
     Load the XGBoost model with the given tag from the local BentoML model store.
 
@@ -216,9 +214,7 @@ def save_model(
     )
 
     if signatures is None:
-        signatures = {
-            "predict": {"batchable": False},
-        }
+        signatures = {"predict": {"batchable": False}}
         logger.info(
             'Using the default model signature for xgboost (%s) for model "%s".',
             signatures,
@@ -270,7 +266,9 @@ def get_runnable(bento_model: bentoml.Model) -> t.Type[bentoml.Runnable]:
                     nthreads = max(int(nthreads), 1)
                 else:
                     nthreads = 1
-                self.booster.set_param({"predictor": "cpu_predictor", "nthread": nthreads})  # type: ignore (incomplete XGBoost types)
+                self.booster.set_param(
+                    {"predictor": "cpu_predictor", "nthread": nthreads}
+                )  # type: ignore (incomplete XGBoost types)
 
             self.predict_fns: dict[str, t.Callable[..., t.Any]] = {}
             for method_name in bento_model.info.signatures:

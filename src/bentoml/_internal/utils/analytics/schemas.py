@@ -55,7 +55,7 @@ class ClientInfo:
 @inject
 @lru_cache(maxsize=1)
 def get_client_info(
-    bentoml_home: str = Provide[BentoMLContainer.bentoml_home],
+    bentoml_home: str = Provide[BentoMLContainer.bentoml_home]
 ) -> t.Optional[ClientInfo]:
     CLIENT_INFO_FILE_PATH = os.path.join(bentoml_home, "client_id")
 
@@ -66,8 +66,7 @@ def get_client_info(
     else:
         # Create new client id
         new_client_info = ClientInfo(
-            id=str(uuid.uuid4()),
-            creation_timestamp=datetime.now(timezone.utc),
+            id=str(uuid.uuid4()), creation_timestamp=datetime.now(timezone.utc)
         )
         # write client info to ~/bentoml/client_id
         with open(CLIENT_INFO_FILE_PATH, "w", encoding="utf-8") as f:
@@ -79,7 +78,7 @@ def get_client_info(
 @inject
 @lru_cache(maxsize=1)
 def get_yatai_user_email(
-    cloud_config: Path = Provide[BentoMLContainer.cloud_config],
+    cloud_config: Path = Provide[BentoMLContainer.cloud_config]
 ) -> str | None:
     if cloud_config.exists():
         return CloudClientConfig.get_config(cloud_config).get_current_context().email

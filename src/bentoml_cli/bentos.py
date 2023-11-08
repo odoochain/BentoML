@@ -38,7 +38,9 @@ BENTOML_FIGLET = """
 
 
 def parse_delete_targets_argument_callback(
-    ctx: Context, params: Parameter, value: t.Any  # pylint: disable=unused-argument
+    ctx: Context,
+    params: Parameter,
+    value: t.Any,  # pylint: disable=unused-argument
 ) -> list[str]:
     if value is None:
         return value
@@ -77,10 +79,7 @@ def add_bento_management_commands(cli: Group):
     @cli.command()
     @click.argument("bento_tag", type=click.STRING)
     @click.option(
-        "-o",
-        "--output",
-        type=click.Choice(["json", "yaml", "path"]),
-        default="yaml",
+        "-o", "--output", type=click.Choice(["json", "yaml", "path"]), default="yaml"
     )
     def get(bento_tag: str, output: str) -> None:  # type: ignore (not accessed)
         """Print Bento details by providing the bento_tag.
@@ -103,10 +102,7 @@ def add_bento_management_commands(cli: Group):
     @cli.command(name="list")
     @click.argument("bento_name", type=click.STRING, required=False)
     @click.option(
-        "-o",
-        "--output",
-        type=click.Choice(["json", "yaml", "table"]),
-        default="table",
+        "-o", "--output", type=click.Choice(["json", "yaml", "table"]), default="table"
     )
     def list_bentos(bento_name: str, output: str) -> None:  # type: ignore (not accessed)
         """List Bentos in local store
@@ -205,12 +201,7 @@ def add_bento_management_commands(cli: Group):
 
     @cli.command()
     @click.argument("bento_tag", type=click.STRING)
-    @click.argument(
-        "out_path",
-        type=click.STRING,
-        default="",
-        required=False,
-    )
+    @click.argument("out_path", type=click.STRING, default="", required=False)
     def export(bento_tag: str, out_path: str) -> None:  # type: ignore (not accessed)
         """Export a Bento to an external file archive
 
@@ -276,13 +267,12 @@ def add_bento_management_commands(cli: Group):
         help="Forced push to remote Bento store even if it exists in remote",
     )
     @click.option(
-        "-t",
-        "--threads",
-        default=10,
-        help="Number of threads to use for upload",
+        "-t", "--threads", default=10, help="Number of threads to use for upload"
     )
     @click.pass_obj
-    def push(shared_options: SharedOptions, bento_tag: str, force: bool, threads: int) -> None:  # type: ignore (not accessed)
+    def push(
+        shared_options: SharedOptions, bento_tag: str, force: bool, threads: int
+    ) -> None:  # type: ignore (not accessed)
         """Push Bento to a remote Bento store server."""
         bento_obj = bento_store.get(bento_tag)
         if not bento_obj:
@@ -368,9 +358,7 @@ def add_bento_management_commands(cli: Group):
             build_config = BentoBuildConfig.from_yaml(f)
 
         bento = Bento.create(
-            build_config=build_config,
-            version=version,
-            build_ctx=build_ctx,
+            build_config=build_config, version=version, build_ctx=build_ctx
         ).save(_bento_store)
 
         containerize_cmd = f"bentoml containerize {bento.tag}"

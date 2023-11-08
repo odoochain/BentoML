@@ -49,10 +49,7 @@ def KerasSequentialModel() -> keras.models.Model:
     net = keras.models.Sequential(
         (
             keras.layers.Dense(
-                units=1,
-                input_shape=(5,),
-                use_bias=False,
-                kernel_initializer="Ones",
+                units=1, input_shape=(5,), use_bias=False, kernel_initializer="Ones"
             ),
         )
     )
@@ -77,8 +74,7 @@ native_sequential_model = FrameworkTestModel(
             test_inputs={
                 "predict": [
                     Input(
-                        input_args=[i],
-                        expected=lambda out: np.isclose(out, res).all(),
+                        input_args=[i], expected=lambda out: np.isclose(out, res).all()
                     )
                     for i in [
                         input_tensor,
@@ -87,9 +83,9 @@ native_sequential_model = FrameworkTestModel(
                         input_array_i32,
                         input_data,
                     ]
-                ],
-            },
-        ),
+                ]
+            }
+        )
     ],
 )
 
@@ -128,17 +124,12 @@ native_functional_model = FrameworkTestModel(
             test_inputs={
                 "predict": [
                     Input(
-                        input_args=[i],
-                        expected=lambda out: np.isclose(out, res2).all(),
+                        input_args=[i], expected=lambda out: np.isclose(out, res2).all()
                     )
-                    for i in [
-                        input_tensor2,
-                        input_array2,
-                        input_data2,
-                    ]
-                ],
-            },
-        ),
+                    for i in [input_tensor2, input_array2, input_data2]
+                ]
+            }
+        )
     ],
 )
 

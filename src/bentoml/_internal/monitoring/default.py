@@ -59,11 +59,7 @@ class DefaultMonitor(MonitorBase["JSONSerializable"]):
     PRESERVED_COLUMNS = (COLUMN_TIME, COLUMN_RID) = ("timestamp", "request_id")
 
     def __init__(
-        self,
-        name: str,
-        log_path: str,
-        log_config_file: str | None = None,
-        **_: t.Any,
+        self, name: str, log_path: str, log_config_file: str | None = None, **_: t.Any
     ) -> None:
         super().__init__(name, **_)
         self.log_config_file = log_config_file
@@ -126,8 +122,7 @@ class DefaultMonitor(MonitorBase["JSONSerializable"]):
         )
 
     def export_data(
-        self,
-        datas: dict[str, collections.deque[JSONSerializable]],
+        self, datas: dict[str, collections.deque[JSONSerializable]]
     ) -> None:
         """
         Export data. This method should be called after all data is logged.

@@ -75,7 +75,9 @@ def initialize_pillow():
 
     PIL.Image.init()
     MIME_EXT_MAPPING = {v: k for k, v in PIL.Image.MIME.items()}  # type: ignore (lazy constant)
-    READABLE_MIMES = {k for k, v in MIME_EXT_MAPPING.items() if v not in PIL_WRITE_ONLY_FORMATS}  # type: ignore (lazy constant)
+    READABLE_MIMES = {
+        k for k, v in MIME_EXT_MAPPING.items() if v not in PIL_WRITE_ONLY_FORMATS
+    }  # type: ignore (lazy constant)
 
 
 class Image(
@@ -433,11 +435,11 @@ class Image(
                     mime_type = mapping[field.kind]
                     if mime_type != self._mime_type:
                         raise BadInput(
-                            f"Inferred mime_type from 'kind' is '{mime_type}', while '{self!r}' is expecting '{self._mime_type}'",
+                            f"Inferred mime_type from 'kind' is '{mime_type}', while '{self!r}' is expecting '{self._mime_type}'"
                         )
                 except KeyError:
                     raise BadInput(
-                        f"{field.kind} is not a valid File kind. Accepted file kind: {[names for names,_ in pb_v1alpha1.File.FileType.items()]}",
+                        f"{field.kind} is not a valid File kind. Accepted file kind: {[names for names,_ in pb_v1alpha1.File.FileType.items()]}"
                     ) from None
             if not field.content:
                 raise BadInput("Content is empty!") from None
@@ -446,7 +448,7 @@ class Image(
             assert isinstance(field, pb.File)
             if field.kind and field.kind != self._mime_type:
                 raise BadInput(
-                    f"MIME type from 'kind' is '{field.kind}', while '{self!r}' is expecting '{self._mime_type}'",
+                    f"MIME type from 'kind' is '{field.kind}', while '{self!r}' is expecting '{self._mime_type}'"
                 )
             content = field.content
             if not content:
@@ -470,7 +472,7 @@ class Image(
             image = obj
         else:
             raise BadInput(
-                f"Unsupported Image type received: '{type(obj)}', the Image IO descriptor only supports 'np.ndarray' and 'PIL.Image'.",
+                f"Unsupported Image type received: '{type(obj)}', the Image IO descriptor only supports 'np.ndarray' and 'PIL.Image'."
             ) from None
         ret = io.BytesIO()
         image.save(ret, format=self._format)
@@ -484,7 +486,7 @@ class Image(
             image = obj
         else:
             raise BadInput(
-                f"Unsupported Image type received: '{type(obj)}', the Image IO descriptor only supports 'np.ndarray' and 'PIL.Image'.",
+                f"Unsupported Image type received: '{type(obj)}', the Image IO descriptor only supports 'np.ndarray' and 'PIL.Image'."
             ) from None
         ret = io.BytesIO()
         image.save(ret, format=self._format)

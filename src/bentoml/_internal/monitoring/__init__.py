@@ -21,12 +21,7 @@ except (ImportError, MissingDependencyException):
     # NOTE: we want this here so that this class will be imported as a dummy object.
     pass
 
-__all__ = [
-    "monitor",
-    "MonitorBase",
-    "DefaultMonitor",
-    "NoOpMonitor",
-]
+__all__ = ["monitor", "MonitorBase", "DefaultMonitor", "NoOpMonitor"]
 
 if _is_otlp_available:
     __all__.append("OTLPMonitor")

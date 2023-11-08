@@ -192,18 +192,14 @@ def save_model(
     )
 
     if signatures is None:
-        signatures = {
-            "predict": {"batchable": False},
-        }
+        signatures = {"predict": {"batchable": False}}
         logger.info(
             'Using the default model signature for CatBoost (%s) for model "%s".',
             signatures,
             name,
         )
 
-    options = CatBoostOptions(
-        training_class_name=model.__class__.__name__,
-    )
+    options = CatBoostOptions(training_class_name=model.__class__.__name__)
 
     with bentoml.models.create(
         name,
@@ -237,9 +233,7 @@ def get_runnable(bento_model: bentoml.Model) -> t.Type[bentoml.Runnable]:
             super().__init__()
             self.model = load_model(bento_model)
 
-            self.predict_params = {
-                "task_type": "CPU",
-            }
+            self.predict_params = {"task_type": "CPU"}
 
             # check for resources
             available_gpus = os.getenv("CUDA_VISIBLE_DEVICES", "")

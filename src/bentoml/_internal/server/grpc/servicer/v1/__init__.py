@@ -49,13 +49,11 @@ def create_bento_servicer(service: Service) -> services.BentoServiceServicer:
         """An asyncio implementation of BentoService servicer."""
 
         async def Call(  # type: ignore (no async types) # pylint: disable=invalid-overridden-method
-            self,
-            request: pb.Request,
-            context: BentoServicerContext,
+            self, request: pb.Request, context: BentoServicerContext
         ) -> pb.Response | None:
             if request.api_name not in service.apis:
                 raise InvalidArgument(
-                    f"given 'api_name' is not defined in {service.name}",
+                    f"given 'api_name' is not defined in {service.name}"
                 ) from None
 
             api = service.apis[request.api_name]

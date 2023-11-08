@@ -21,10 +21,7 @@ def img_data():
             img_bytes = f.read()
         img_arr = np.array(PIL.Image.open(io.BytesIO(img_bytes)))
         img_arr = img_arr / 255.0
-        img_dic = {
-            "bytes": img_bytes,
-            "array": img_arr,
-        }
+        img_dic = {"bytes": img_bytes, "array": img_arr}
         images[digit] = img_dic
 
     return images

@@ -140,10 +140,7 @@ def payload_paramss_to_batch_params(
 
     _converted_params = Params.agg(
         paramss,
-        agg_func=lambda i: AutoContainer.from_batch_payloads(
-            i,
-            batch_dim=batch_dim,
-        ),
+        agg_func=lambda i: AutoContainer.from_batch_payloads(i, batch_dim=batch_dim),
     ).iter()
     batched_params = next(_converted_params)
     indice_params: Params[list[int]] = next(_converted_params)
@@ -171,9 +168,7 @@ def _next(iterator: t.Iterator[T]) -> T:
         raise _StopIteration
 
 
-async def iterate_in_threadpool(
-    iterator: t.Iterator[T],
-) -> t.AsyncIterator[T]:
+async def iterate_in_threadpool(iterator: t.Iterator[T]) -> t.AsyncIterator[T]:
     while True:
         try:
             yield await anyio.to_thread.run_sync(_next, iterator)

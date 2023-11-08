@@ -444,10 +444,7 @@ def get_containerfile(
     """
     bento = _bento_store.get(bento_tag)
     with _internal_construct_containerfile(
-        bento,
-        enable_buildkit=enable_buildkit,
-        features=features,
-        add_header=True,
+        bento, enable_buildkit=enable_buildkit, features=features, add_header=True
     ) as (_, final_containerfile):
         if output_path is not None:
             if os.path.isdir(output_path):

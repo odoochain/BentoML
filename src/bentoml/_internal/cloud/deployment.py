@@ -61,9 +61,7 @@ class Resource:
 class Deployment:
     @classmethod
     def _get_default_kube_namespace(
-        cls,
-        cluster_name: str,
-        context: str | None = None,
+        cls, cluster_name: str, context: str | None = None
     ) -> str:
         cloud_rest_client = get_rest_api_client(context)
         res = cloud_rest_client.get_cluster(cluster_name)
@@ -143,9 +141,7 @@ class Deployment:
                     f"Update deployment: {target.bento_repository}:{target.bento} does not exist"
                 )
             cloud_rest_client.get_deployment(
-                cluster_name,
-                kube_namespace,
-                deployment_name,
+                cluster_name, kube_namespace, deployment_name
             )
 
         res = cloud_rest_client.update_deployment(
@@ -328,7 +324,7 @@ class Deployment:
                     k: bentoml_cattr.unstructure(v) for k, v in runners_config.items()
                 }
                 if runners_config
-                else None,
+                else None
             }
         else:
             api_server_config.runners = runners_config
@@ -520,9 +516,7 @@ class Deployment:
         if kube_namespace is None:
             kube_namespace = cls._get_default_kube_namespace(cluster_name, context)
         res = cloud_rest_client.get_deployment(
-            cluster_name,
-            kube_namespace,
-            deployment_name,
+            cluster_name, kube_namespace, deployment_name
         )
         if res is None:
             raise BentoMLException("Delete deployment: Deployment does not exist")
@@ -548,9 +542,7 @@ class Deployment:
         if kube_namespace is None:
             kube_namespace = cls._get_default_kube_namespace(cluster_name, context)
         res = cloud_rest_client.get_deployment(
-            cluster_name,
-            kube_namespace,
-            deployment_name,
+            cluster_name, kube_namespace, deployment_name
         )
         if res is None:
             raise BentoMLException("Teminate deployment: Deployment does not exist")

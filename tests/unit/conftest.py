@@ -65,9 +65,7 @@ def reload_directory(
         p = root.joinpath(f)
         p.touch()
     build_config = BentoBuildConfig(
-        service="service.py:svc",
-        description="A mock service",
-        exclude=["*.rs"],
+        service="service.py:svc", description="A mock service", exclude=["*.rs"]
     ).with_defaults()
     bentofile = root / "bentofile.yaml"
     bentofile.touch()

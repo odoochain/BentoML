@@ -60,8 +60,7 @@ def get(tag_like: str | Tag) -> bentoml.Model:
 
 
 def load_model(
-    bento_model: str | Tag | bentoml.Model,
-    device_name: str = "/device:CPU:0",
+    bento_model: str | Tag | bentoml.Model, device_name: str = "/device:CPU:0"
 ) -> tf_ext.AutoTrackable | tf_ext.Module:
     """
     Load a tensorflow model from BentoML local modelstore with given name.
@@ -176,19 +175,13 @@ def save_model(
 
     """  # noqa
     context = ModelContext(
-        framework_name="tensorflow",
-        framework_versions={"tensorflow": get_tf_version()},
+        framework_name="tensorflow", framework_versions={"tensorflow": get_tf_version()}
     )
 
     if signatures is None:
         restorable_functions = get_restorable_functions(model)
         if restorable_functions:
-            signatures = {
-                k: {
-                    "batchable": False,
-                }
-                for k in restorable_functions
-            }
+            signatures = {k: {"batchable": False} for k in restorable_functions}
         else:
             signatures = {"__call__": {"batchable": False}}
         logger.info(
@@ -210,18 +203,13 @@ def save_model(
         signatures=signatures,  # type: ignore
     ) as bento_model:
         tf.saved_model.save(
-            model,
-            bento_model.path,
-            signatures=tf_signatures,
-            options=tf_save_options,
+            model, bento_model.path, signatures=tf_signatures, options=tf_save_options
         )
 
         return bento_model
 
 
-def get_runnable(
-    bento_model: bentoml.Model,
-):
+def get_runnable(bento_model: bentoml.Model):
     """
     Private API: use :obj:`~bentoml.Model.to_runnable` instead.
     """
@@ -268,7 +256,7 @@ def get_runnable(
             if isinstance(sig, (list, tuple)):
 
                 def _postprocess(
-                    res: tuple[tf_ext.EagerTensor],
+                    res: tuple[tf_ext.EagerTensor]
                 ) -> TFRunnableOutputType:
                     return tuple(t.cast("ext.NpNDArray", r.numpy()) for r in res)
 
@@ -289,9 +277,7 @@ def get_runnable(
                     return t.cast("ext.NpNDArray", res.numpy())
 
         def _run_method(
-            _runnable_self: TensorflowRunnable,
-            *args: TFArgType,
-            **kwargs: TFArgType,
+            _runnable_self: TensorflowRunnable, *args: TFArgType, **kwargs: TFArgType
         ) -> TFRunnableOutputType:
             if method_partial_kwargs is not None:
                 kwargs = dict(method_partial_kwargs, **kwargs)
@@ -369,29 +355,18 @@ class TensorflowTensorContainer(
         return tf.split(batch, size_splits, axis=batch_dim)  # type: ignore
 
     @classmethod
-    def to_payload(
-        cls,
-        batch: tf_ext.EagerTensor,
-        batch_dim: int = 0,
-    ) -> Payload:
+    def to_payload(cls, batch: tf_ext.EagerTensor, batch_dim: int = 0) -> Payload:
         return cls.create_payload(
-            pickle.dumps(batch),
-            batch_size=batch.shape[batch_dim],
+            pickle.dumps(batch), batch_size=batch.shape[batch_dim]
         )
 
     @classmethod
-    def from_payload(
-        cls,
-        payload: Payload,
-    ) -> tf_ext.EagerTensor:
+    def from_payload(cls, payload: Payload) -> tf_ext.EagerTensor:
         return pickle.loads(payload.data)
 
     @classmethod
     def batch_to_payloads(
-        cls,
-        batch: tf_ext.EagerTensor,
-        indices: t.Sequence[int],
-        batch_dim: int = 0,
+        cls, batch: tf_ext.EagerTensor, indices: t.Sequence[int], batch_dim: int = 0
     ) -> t.List[Payload]:
         batches = cls.batch_to_batches(batch, indices, batch_dim)
 
@@ -400,9 +375,7 @@ class TensorflowTensorContainer(
 
     @classmethod
     def from_batch_payloads(
-        cls,
-        payloads: t.Sequence[Payload],
-        batch_dim: int = 0,
+        cls, payloads: t.Sequence[Payload], batch_dim: int = 0
     ) -> t.Tuple[tf_ext.EagerTensor, t.List[int]]:
         batches = [cls.from_payload(payload) for payload in payloads]
         return cls.batches_to_batch(batches, batch_dim)

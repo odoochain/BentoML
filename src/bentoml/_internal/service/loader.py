@@ -195,11 +195,7 @@ def load_bento(
     if isinstance(bento, (str, Tag)):
         bento = bento_store.get(bento)
 
-    logger.debug(
-        'Loading bento "%s" found in local store: %s',
-        bento.tag,
-        bento.path,
-    )
+    logger.debug('Loading bento "%s" found in local store: %s', bento.tag, bento.path)
 
     # not in validate as it's only really necessary when getting bentos from disk
     if bento.info.bentoml_version != BENTOML_VERSION:
@@ -228,11 +224,7 @@ def load_bento_dir(path: str, standalone_load: bool = False) -> "Service":
     """
     bento_fs = fs.open_fs(path)
     bento = Bento.from_fs(bento_fs)
-    logger.debug(
-        'Loading bento "%s" from directory: %s',
-        bento.tag,
-        path,
-    )
+    logger.debug('Loading bento "%s" from directory: %s', bento.tag, path)
     return _load_bento(bento, standalone_load)
 
 
@@ -350,9 +342,7 @@ def load(
                     encoding="utf-8",
                 ) as f:
                     build_config = BentoBuildConfig.from_yaml(f)
-                assert (
-                    build_config.service
-                ), '"service" field in "bentofile.yaml" is required for loading the service, e.g. "service: my_service.py:svc"'
+                assert build_config.service, '"service" field in "bentofile.yaml" is required for loading the service, e.g. "service: my_service.py:svc"'
                 BentoMLContainer.model_aliases.set(build_config.model_aliases)
                 svc = import_service(
                     build_config.service,

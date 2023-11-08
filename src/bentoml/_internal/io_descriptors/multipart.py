@@ -181,9 +181,7 @@ class Multipart(
     def _from_sample(cls, sample: dict[str, t.Any]) -> t.Any:
         raise NotImplementedError("'from_sample' is not supported for Multipart.")
 
-    def input_type(
-        self,
-    ) -> dict[str, t.Type[t.Any] | UnionType | LazyType[t.Any]]:
+    def input_type(self) -> dict[str, t.Type[t.Any] | UnionType | LazyType[t.Any]]:
         res: dict[str, t.Type[t.Any] | UnionType | LazyType[t.Any]] = {}
         for k, v in self._inputs.items():
             inp_type = v.input_type()
@@ -296,7 +294,7 @@ class Multipart(
     def validate_input_mapping(self, field: t.MutableMapping[str, t.Any]) -> None:
         if len(set(field) - set(self._inputs)) != 0:
             raise InvalidArgument(
-                f"'{self!r}' accepts the following keys: {set(self._inputs)}. Given {field.__class__.__qualname__} has invalid fields: {set(field) - set(self._inputs)}",
+                f"'{self!r}' accepts the following keys: {set(self._inputs)}. Given {field.__class__.__qualname__} has invalid fields: {set(field) - set(self._inputs)}"
             ) from None
 
     async def from_proto(self, field: pb.Multipart) -> dict[str, t.Any]:

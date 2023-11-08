@@ -32,8 +32,5 @@ def generate_dockerfile(docker: DockerOptions, context_path: str, *, use_conda: 
     bento = Bento.from_fs(fs.open_fs(context_path))
     logger.debug("'use_conda' is deprecated and will not be used.")
     return generate_containerfile(
-        docker,
-        bento.path,
-        conda=bento.info.conda,
-        bento_fs=bento._fs,
+        docker, bento.path, conda=bento.info.conda, bento_fs=bento._fs
     )

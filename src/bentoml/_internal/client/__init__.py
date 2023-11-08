@@ -56,12 +56,7 @@ class Client(ABC):
                     functools.partial(self.async_call, bentoml_api_name=name),
                 )
 
-    def call(
-        self,
-        bentoml_api_name: str,
-        inp: t.Any = None,
-        **kwargs: t.Any,
-    ) -> t.Any:
+    def call(self, bentoml_api_name: str, inp: t.Any = None, **kwargs: t.Any) -> t.Any:
         return self._sync_client.call(
             inp=inp, bentoml_api_name=bentoml_api_name, **kwargs
         )
@@ -149,11 +144,7 @@ class AsyncClient(ABC):
             self.endpoints.append(name)
 
             if not hasattr(self, name):
-                setattr(
-                    self,
-                    name,
-                    functools.partial(self._call, _bentoml_api=api),
-                )
+                setattr(self, name, functools.partial(self._call, _bentoml_api=api))
 
     async def call(
         self, bentoml_api_name: str, inp: t.Any = None, **kwargs: t.Any
@@ -274,11 +265,7 @@ class SyncClient(Client):
             self.endpoints.append(name)
 
             if not hasattr(self, name):
-                setattr(
-                    self,
-                    name,
-                    functools.partial(self._call, _bentoml_api=api),
-                )
+                setattr(self, name, functools.partial(self._call, _bentoml_api=api))
 
     def call(self, bentoml_api_name: str, inp: t.Any = None, **kwargs: t.Any) -> t.Any:
         return self._call(inp, _bentoml_api=self._svc.apis[bentoml_api_name], **kwargs)

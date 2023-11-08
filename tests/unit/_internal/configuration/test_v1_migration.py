@@ -15,8 +15,7 @@ if TYPE_CHECKING:
 
 @pytest.mark.usefixtures("container_from_file")
 def test_backward_configuration(
-    container_from_file: t.Callable[[str], ConfigDictType],
-    caplog: LogCaptureFixture,
+    container_from_file: t.Callable[[str], ConfigDictType], caplog: LogCaptureFixture
 ):
     OLD_CONFIG = """\
 api_server:
@@ -39,8 +38,7 @@ api_server:
 
 @pytest.mark.usefixtures("container_from_envvar")
 def test_backward_from_envvar(
-    container_from_envvar: t.Callable[[str], ConfigDictType],
-    caplog: LogCaptureFixture,
+    container_from_envvar: t.Callable[[str], ConfigDictType], caplog: LogCaptureFixture
 ):
     envvar = 'version=1 tracing.type="jaeger" tracing.jaeger.address="localhost" tracing.jaeger.port=6831 tracing.sample_rate=0.7'
     with caplog.at_level(logging.WARNING):
@@ -68,8 +66,7 @@ api_server:
 
 @pytest.mark.usefixtures("container_from_file")
 def test_backward_warning(
-    container_from_file: t.Callable[[str], ConfigDictType],
-    caplog: LogCaptureFixture,
+    container_from_file: t.Callable[[str], ConfigDictType], caplog: LogCaptureFixture
 ):
     OLD_HOST = """\
 api_server:

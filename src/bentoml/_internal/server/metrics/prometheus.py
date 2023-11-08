@@ -14,12 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class PrometheusClient:
-    def __init__(
-        self,
-        *,
-        multiproc: bool = True,
-        multiproc_dir: str | None = None,
-    ):
+    def __init__(self, *, multiproc: bool = True, multiproc_dir: str | None = None):
         """
         PrometheusClient is BentoML's own prometheus client that extends the official Python client.
 
@@ -97,9 +92,7 @@ class PrometheusClient:
 
     def start_http_server(self, port: int, addr: str = "") -> None:
         self.prometheus_client.start_http_server(
-            port=port,
-            addr=addr,
-            registry=self.registry,
+            port=port, addr=addr, registry=self.registry
         )
 
     start_wsgi_server = start_http_server

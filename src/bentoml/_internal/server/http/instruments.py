@@ -21,11 +21,7 @@ STATUS_VAR: contextvars.ContextVar[int] = contextvars.ContextVar("STATUS_VAR")
 
 
 class HTTPTrafficMetricsMiddleware:
-    def __init__(
-        self,
-        app: ext.ASGIApp,
-        namespace: str = "bentoml_api_server",
-    ):
+    def __init__(self, app: ext.ASGIApp, namespace: str = "bentoml_api_server"):
         self.app = app
         self.namespace = namespace
         self._is_setup = False
@@ -73,10 +69,7 @@ class HTTPTrafficMetricsMiddleware:
         self._is_setup = True
 
     async def __call__(
-        self,
-        scope: ext.ASGIScope,
-        receive: ext.ASGIReceive,
-        send: ext.ASGISend,
+        self, scope: ext.ASGIScope, receive: ext.ASGIReceive, send: ext.ASGISend
     ) -> None:
         if not self._is_setup:
             self._setup()
@@ -137,11 +130,7 @@ class HTTPTrafficMetricsMiddleware:
 
 
 class RunnerTrafficMetricsMiddleware:
-    def __init__(
-        self,
-        app: "ext.ASGIApp",
-        namespace: str = "bentoml_runner",
-    ):
+    def __init__(self, app: "ext.ASGIApp", namespace: str = "bentoml_runner"):
         self.app = app
         self.namespace = namespace
         self._is_setup = False
@@ -187,10 +176,7 @@ class RunnerTrafficMetricsMiddleware:
         self._is_setup = True
 
     async def __call__(
-        self,
-        scope: "ext.ASGIScope",
-        receive: "ext.ASGIReceive",
-        send: "ext.ASGISend",
+        self, scope: "ext.ASGIScope", receive: "ext.ASGIReceive", send: "ext.ASGISend"
     ) -> None:
         if not self._is_setup:
             self._setup()

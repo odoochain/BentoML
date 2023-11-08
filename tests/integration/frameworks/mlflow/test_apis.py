@@ -69,9 +69,7 @@ def test_mlflow_save_load(URI: Path, tmp_path: Path):
     client = mlflow.tracking.MlflowClient()
     mv = mlflow.register_model(str(URI), "IrisClf")
     client.transition_model_version_stage(
-        name="IrisClf",
-        version=mv.version,
-        stage="Staging",
+        name="IrisClf", version=mv.version, stage="Staging"
     )
     bento_model = bentoml.mlflow.import_model(MODEL_NAME, str(URI.resolve()))
     # make sure the model can be imported with models:/
@@ -113,8 +111,7 @@ def test_wrong_module_load():
 def test_invalid_import():
     uri = Path(__file__).parent / "NoPyfunc"
     with pytest.raises(
-        BentoMLException,
-        match="does not support the required python_function flavor",
+        BentoMLException, match="does not support the required python_function flavor"
     ):
         _ = bentoml.mlflow.import_model("NoPyfunc", str(uri.resolve()))
 

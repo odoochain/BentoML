@@ -15,10 +15,7 @@ import bentoml
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 # Load some categories from the training set
-categories = [
-    "alt.atheism",
-    "talk.religion.misc",
-]
+categories = ["alt.atheism", "talk.religion.misc"]
 
 # Uncomment the following to do the analysis on all the categories
 # categories = None
@@ -82,9 +79,7 @@ bento_model = bentoml.sklearn.save_model(
         "predict": {"batchable": True, "batch_dim": 0},
         "predict_proba": {"batchable": True, "batch_dim": 0},
     },
-    custom_objects={
-        "target_names": data.target_names,
-    },
+    custom_objects={"target_names": data.target_names},
     metadata=best_parameters,
 )
 print(f"Model saved: {bento_model}")

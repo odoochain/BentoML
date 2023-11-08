@@ -69,7 +69,7 @@ cancer_model = FrameworkTestModel(
                         input_args=[np.array([cancer_data[1]])],
                         expected=close_to([[0.97558, 0.0244234]]),
                     ),
-                ],
+                ]
             },
             check_model=check_model,
         ),
@@ -84,7 +84,7 @@ cancer_model = FrameworkTestModel(
                         input_args=[pd.DataFrame([cancer_data[1]])],
                         expected=close_to([[0.97558, 0.0244234]]),
                     ),
-                ],
+                ]
             },
             check_model=check_model,
         ),
@@ -108,14 +108,12 @@ iris_model = FrameworkTestModel(
             test_inputs={
                 "predict": [
                     Input(
-                        input_args=[np.array([iris_data[0]])],
-                        expected=[iris_target[0]],
+                        input_args=[np.array([iris_data[0]])], expected=[iris_target[0]]
                     ),
                     Input(
-                        input_args=[np.array(iris_data[1:5])],
-                        expected=iris_target[1:5],
+                        input_args=[np.array(iris_data[1:5])], expected=iris_target[1:5]
                     ),
-                ],
+                ]
             },
             check_model=check_model,
         ),
@@ -130,7 +128,7 @@ iris_model = FrameworkTestModel(
                         input_args=[pd.DataFrame(iris_data[1:5])],
                         expected=iris_target[1:5],
                     ),
-                ],
+                ]
             },
             check_model=check_model,
         ),

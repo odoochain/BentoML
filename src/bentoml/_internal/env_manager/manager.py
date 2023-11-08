@@ -45,10 +45,7 @@ class EnvManager:
 
     @classmethod
     def from_bento(
-        cls,
-        env_type: t.Literal["conda"],
-        bento: Bento,
-        is_ephemeral: bool,
+        cls, env_type: t.Literal["conda"], bento: Bento, is_ephemeral: bool
     ) -> EnvManager:
         env_name: str
         if is_ephemeral:
@@ -56,10 +53,7 @@ class EnvManager:
         else:
             env_name = str(bento.tag).replace(":", "_")
         return cls(
-            env_type=env_type,
-            env_name=env_name,
-            is_ephemeral=is_ephemeral,
-            bento=bento,
+            env_type=env_type, env_name=env_name, is_ephemeral=is_ephemeral, bento=bento
         )
 
     @classmethod

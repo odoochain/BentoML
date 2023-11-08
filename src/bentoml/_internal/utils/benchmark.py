@@ -131,13 +131,7 @@ class Stat:
 
     def print_step(self):
         now = time.time()
-        headers = (
-            "Result",
-            "Total",
-            "Reqs/s",
-            "Resp Time Avg",
-            "Client Health %",
-        )
+        headers = ("Result", "Total", "Reqs/s", "Resp Time Avg", "Client Health %")
         r = (
             (
                 "succ",
@@ -161,15 +155,7 @@ class Stat:
         ps = percentile(self.succ_times, [0.5, 0.95, 0.99])
         ps_fail = percentile(self.exec_times, [0.5, 0.95, 0.99])
         health = (1 - self.client_busy / max(self.req_total, 1)) * 100
-        headers = (
-            "Result",
-            "Total",
-            "Reqs/s",
-            "Resp Time Avg",
-            "P50",
-            "P95",
-            "P99",
-        )
+        headers = ("Result", "Total", "Reqs/s", "Resp Time Avg", "P50", "P95", "P99")
         r = (
             (
                 "succ",
@@ -211,10 +197,7 @@ class Stat:
     def print_exec(self):
         headers = ["exceptions", "count"]
         rs = [
-            (
-                wrap_line(str(v[0]), 50)[:1000],
-                len(v),
-            )
+            (wrap_line(str(v[0]), 50)[:1000], len(v))
             for k, v in self.exceptions.items()
         ]
         print(tabulate(rs, headers=headers, tablefmt="fancy_grid"))

@@ -95,7 +95,7 @@ def inputs(x: list[ext.NpNDArray]) -> list[ext.NpNDArray]:
 
 
 def close_to(
-    expected: float,
+    expected: float
 ) -> t.Callable[[tuple[t.Any, t.Any, ext.NpNDArray]], np.bool_]:
     def check(out: tuple[t.Any, t.Any, ext.NpNDArray]) -> np.bool_:
         return np.isclose(out[-1].squeeze().item(), expected).all()
@@ -116,10 +116,10 @@ iris_model = FrameworkTestModel(
                         expected=lambda out: np.isclose(
                             out[-1].numpy(), [-0.3580], rtol=1e-3
                         ).all(),
-                    ),
-                ],
-            },
-        ),
+                    )
+                ]
+            }
+        )
     ],
 )
 
@@ -132,12 +132,11 @@ linear_regression = FrameworkTestModel(
             test_inputs={
                 "predict": [
                     Input(
-                        input_args=inputs([np.array([[1] * 5])]),
-                        expected=close_to(5.0),
-                    ),
-                ],
-            },
-        ),
+                        input_args=inputs([np.array([[1] * 5])]), expected=close_to(5.0)
+                    )
+                ]
+            }
+        )
     ],
 )
 models: list[FrameworkTestModel] = [iris_model, linear_regression]

@@ -9,8 +9,7 @@ LATEST_PROTOCOL_VERSION = "v1"
 
 
 def import_generated_stubs(
-    version: str = LATEST_PROTOCOL_VERSION,
-    file: str = "service.proto",
+    version: str = LATEST_PROTOCOL_VERSION, file: str = "service.proto"
 ) -> tuple[types.ModuleType, types.ModuleType]:
     """
     Import generated stubs.

@@ -56,11 +56,6 @@ async def classify_generated_texts(original_sentence: str) -> dict:
     results = []
     for sentence in generated_sentences:
         score = (await bert_base_uncased_classifier.async_run(sentence))[0]["score"]
-        results.append(
-            {
-                "generated": sentence,
-                "score": score,
-            }
-        )
+        results.append({"generated": sentence, "score": score})
 
     return results

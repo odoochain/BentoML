@@ -51,7 +51,7 @@ def create_bento_servicer(service: Service) -> services.BentoServiceServicer:
         ) -> pb.Response | None:
             if request.api_name not in service.apis:
                 raise InvalidArgument(
-                    f"given 'api_name' is not defined in {service.name}",
+                    f"given 'api_name' is not defined in {service.name}"
                 ) from None
 
             api = service.apis[request.api_name]

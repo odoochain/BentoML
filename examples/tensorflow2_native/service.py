@@ -7,10 +7,7 @@ from bentoml.io import NumpyNdarray
 
 mnist_runner = bentoml.tensorflow.get("tensorflow_mnist:latest").to_runner()
 
-svc = bentoml.Service(
-    name="tensorflow_mnist_demo",
-    runners=[mnist_runner],
-)
+svc = bentoml.Service(name="tensorflow_mnist_demo", runners=[mnist_runner])
 
 
 @svc.api(input=Image(), output=NumpyNdarray(dtype="float32"))

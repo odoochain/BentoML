@@ -132,9 +132,7 @@ class LazyType(t.Generic[T]):
         """LazyType("numpy.ndarray")"""
 
     def __init__(
-        self,
-        module_or_cls: str | t.Type[T],
-        qualname: str | None = None,
+        self, module_or_cls: str | t.Type[T], qualname: str | None = None
     ) -> None:
         if isinstance(module_or_cls, str):
             if qualname is None:  # LazyType("numpy.ndarray")

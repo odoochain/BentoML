@@ -176,10 +176,7 @@ class YataiClient(CloudClient):
                 remote_bento = yatai_rest_client.update_bento(
                     bento_repository_name=bento_repository.name,
                     version=version,
-                    req=UpdateBentoSchema(
-                        manifest=manifest,
-                        labels=labels,
-                    ),
+                    req=UpdateBentoSchema(manifest=manifest, labels=labels),
                 )
 
         transmission_strategy: TransmissionStrategy = "proxy"
@@ -209,7 +206,7 @@ class YataiClient(CloudClient):
                 with tarfile.open(fileobj=tar_io, mode="w:") as tar:
 
                     def filter_(
-                        tar_info: tarfile.TarInfo,
+                        tar_info: tarfile.TarInfo
                     ) -> t.Optional[tarfile.TarInfo]:
                         if tar_info.path == "./models" or tar_info.path.startswith(
                             "./models/"
@@ -249,24 +246,21 @@ class YataiClient(CloudClient):
                 )
                 return
             finish_req = FinishUploadBentoSchema(
-                status=BentoUploadStatus.SUCCESS,
-                reason="",
+                status=BentoUploadStatus.SUCCESS, reason=""
             )
             try:
                 if presigned_upload_url is not None:
                     resp = requests.put(presigned_upload_url, data=tar_io)
                     if resp.status_code != 200:
                         finish_req = FinishUploadBentoSchema(
-                            status=BentoUploadStatus.FAILED,
-                            reason=resp.text,
+                            status=BentoUploadStatus.FAILED, reason=resp.text
                         )
                 else:
                     with self.spin(
                         text=f'Start multipart uploading Bento "{bento.tag}"...'
                     ):
                         remote_bento = yatai_rest_client.start_bento_multipart_upload(
-                            bento_repository_name=bento_repository.name,
-                            version=version,
+                            bento_repository_name=bento_repository.name, version=version
                         )
                         if not remote_bento.upload_id:
                             raise BentoMLException(
@@ -288,8 +282,7 @@ class YataiClient(CloudClient):
                                     bento_repository_name=bento_repository.name,
                                     version=version,
                                     req=PreSignMultipartUploadUrlSchema(
-                                        upload_id=upload_id,
-                                        part_number=chunk_number,
+                                        upload_id=upload_id, part_number=chunk_number
                                     ),
                                 )
                             )
@@ -298,8 +291,7 @@ class YataiClient(CloudClient):
                         ):
                             chunk = (
                                 tar_io.getbuffer()[
-                                    (chunk_number - 1)
-                                    * FILE_CHUNK_SIZE : chunk_number
+                                    (chunk_number - 1) * FILE_CHUNK_SIZE : chunk_number
                                     * FILE_CHUNK_SIZE
                                 ]
                                 if chunk_number < chunks_count
@@ -327,11 +319,7 @@ class YataiClient(CloudClient):
                         max_workers=min(max(chunks_count, 1), threads)
                     ) as executor:
                         for i in range(1, chunks_count + 1):
-                            future = executor.submit(
-                                chunk_upload,
-                                upload_id,
-                                i,
-                            )
+                            future = executor.submit(chunk_upload, upload_id, i)
                             futures_.append(future)
 
                     parts: list[CompletePartSchema] = []
@@ -344,10 +332,7 @@ class YataiClient(CloudClient):
                         else:
                             etag, chunk_number = result
                             parts.append(
-                                CompletePartSchema(
-                                    part_number=chunk_number,
-                                    etag=etag,
-                                )
+                                CompletePartSchema(part_number=chunk_number, etag=etag)
                             )
 
                     with self.spin(
@@ -358,16 +343,14 @@ class YataiClient(CloudClient):
                                 bento_repository_name=bento_repository.name,
                                 version=version,
                                 req=CompleteMultipartUploadSchema(
-                                    upload_id=upload_id,
-                                    parts=parts,
+                                    upload_id=upload_id, parts=parts
                                 ),
                             )
                         )
 
             except Exception as e:  # pylint: disable=broad-except
                 finish_req = FinishUploadBentoSchema(
-                    status=BentoUploadStatus.FAILED,
-                    reason=str(e),
+                    status=BentoUploadStatus.FAILED, reason=str(e)
                 )
             if finish_req.status is BentoUploadStatus.FAILED:
                 self.log_progress.add_task(
@@ -486,8 +469,7 @@ class YataiClient(CloudClient):
 
             if transmission_strategy == "proxy":
                 response = yatai_rest_client.download_bento(
-                    bento_repository_name=name,
-                    version=version,
+                    bento_repository_name=name, version=version
                 )
             else:
                 if presigned_download_url is None:
@@ -685,24 +667,21 @@ class YataiClient(CloudClient):
                 )
                 return
             finish_req = FinishUploadModelSchema(
-                status=ModelUploadStatus.SUCCESS,
-                reason="",
+                status=ModelUploadStatus.SUCCESS, reason=""
             )
             try:
                 if presigned_upload_url is not None:
                     resp = requests.put(presigned_upload_url, data=tar_io)
                     if resp.status_code != 200:
                         finish_req = FinishUploadModelSchema(
-                            status=ModelUploadStatus.FAILED,
-                            reason=resp.text,
+                            status=ModelUploadStatus.FAILED, reason=resp.text
                         )
                 else:
                     with self.spin(
                         text=f'Start multipart uploading Model "{model.tag}"...'
                     ):
                         remote_model = yatai_rest_client.start_model_multipart_upload(
-                            model_repository_name=model_repository.name,
-                            version=version,
+                            model_repository_name=model_repository.name, version=version
                         )
                         if not remote_model.upload_id:
                             raise BentoMLException(
@@ -724,8 +703,7 @@ class YataiClient(CloudClient):
                                     model_repository_name=model_repository.name,
                                     version=version,
                                     req=PreSignMultipartUploadUrlSchema(
-                                        upload_id=upload_id,
-                                        part_number=chunk_number,
+                                        upload_id=upload_id, part_number=chunk_number
                                     ),
                                 )
                             )
@@ -735,8 +713,7 @@ class YataiClient(CloudClient):
                         ):
                             chunk = (
                                 tar_io.getbuffer()[
-                                    (chunk_number - 1)
-                                    * FILE_CHUNK_SIZE : chunk_number
+                                    (chunk_number - 1) * FILE_CHUNK_SIZE : chunk_number
                                     * FILE_CHUNK_SIZE
                                 ]
                                 if chunk_number < chunks_count
@@ -764,11 +741,7 @@ class YataiClient(CloudClient):
                         max_workers=min(max(chunks_count, 1), threads)
                     ) as executor:
                         for i in range(1, chunks_count + 1):
-                            future = executor.submit(
-                                chunk_upload,
-                                upload_id,
-                                i,
-                            )
+                            future = executor.submit(chunk_upload, upload_id, i)
                             futures_.append(future)
 
                     parts: list[CompletePartSchema] = []
@@ -781,10 +754,7 @@ class YataiClient(CloudClient):
                         else:
                             etag, chunk_number = result
                             parts.append(
-                                CompletePartSchema(
-                                    part_number=chunk_number,
-                                    etag=etag,
-                                )
+                                CompletePartSchema(part_number=chunk_number, etag=etag)
                             )
 
                     with self.spin(
@@ -795,16 +765,14 @@ class YataiClient(CloudClient):
                                 model_repository_name=model_repository.name,
                                 version=version,
                                 req=CompleteMultipartUploadSchema(
-                                    upload_id=upload_id,
-                                    parts=parts,
+                                    upload_id=upload_id, parts=parts
                                 ),
                             )
                         )
 
             except Exception as e:  # pylint: disable=broad-except
                 finish_req = FinishUploadModelSchema(
-                    status=ModelUploadStatus.FAILED,
-                    reason=str(e),
+                    status=ModelUploadStatus.FAILED, reason=str(e)
                 )
             if finish_req.status is ModelUploadStatus.FAILED:
                 self.log_progress.add_task(

@@ -39,9 +39,7 @@ else:
 
 
 def assert_ndarray(
-    resp: pb.Response,
-    assert_shape: list[int],
-    assert_dtype: pb.NDArray.DType.ValueType,
+    resp: pb.Response, assert_shape: list[int], assert_dtype: pb.NDArray.DType.ValueType
 ) -> bool:
     # Hide traceback from pytest
     __tracebackhide__ = True  # pylint: disable=unused-variable
@@ -97,7 +95,8 @@ async def test_numpy(host: str):
             channel=channel,
             data={
                 "ndarray": pb.NDArray(
-                    dtype=123, string_values=np.array(["2", "2f"])  # type: ignore (test exception)
+                    dtype=123,
+                    string_values=np.array(["2", "2f"]),  # type: ignore (test exception)
                 )
             },
             assert_code=grpc.StatusCode.INVALID_ARGUMENT,
@@ -187,7 +186,7 @@ async def test_json(host: str):
                     sepal_len=struct_pb2.Value(number_value=2.34),
                     sepal_width=struct_pb2.Value(number_value=1.58),
                     petal_len=struct_pb2.Value(number_value=6.52),
-                ),
+                )
             },
             assert_code=grpc.StatusCode.INVALID_ARGUMENT,
         )
@@ -228,9 +227,7 @@ async def test_file(host: str, bin_file: str):
 
 
 def assert_image(
-    resp: pb.Response | pb.Part,
-    assert_kind: str,
-    im_file: str | ext.NpNDArray,
+    resp: pb.Response | pb.Part, assert_kind: str, im_file: str | ext.NpNDArray
 ) -> bool:
     fio = io.BytesIO(resp.file.content)
     fio.name = "test.bmp"
@@ -302,7 +299,7 @@ async def test_pandas(host: str):
                         pb.Series(int32_values=[2]),
                         pb.Series(int32_values=[3]),
                     ],
-                ),
+                )
             },
         )
         await async_client_call(
@@ -316,7 +313,7 @@ async def test_pandas(host: str):
                         pb.Series(int64_values=[40, 83]),
                         pb.Series(int64_values=[32, 89]),
                     ],
-                ),
+                )
             },
         )
         await async_client_call(
@@ -324,14 +321,12 @@ async def test_pandas(host: str):
             channel=channel,
             data={
                 "dataframe": pb.DataFrame(
-                    column_names=["col1"],
-                    columns=[pb.Series(int64_values=[23])],
-                ),
+                    column_names=["col1"], columns=[pb.Series(int64_values=[23])]
+                )
             },
             assert_data=lambda resp: resp.dataframe  # type: ignore (bad lambda types)
             == pb.DataFrame(
-                column_names=["col1"],
-                columns=[pb.Series(int64_values=[46])],
+                column_names=["col1"], columns=[pb.Series(int64_values=[46])]
             ),
         )
         await async_client_call(
@@ -341,7 +336,7 @@ async def test_pandas(host: str):
                 "dataframe": pb.DataFrame(
                     column_names=["col1"],
                     columns=[pb.Series(int64_values=[23], int32_values=[23])],
-                ),
+                )
             },
             assert_code=grpc.StatusCode.INVALID_ARGUMENT,
         )
@@ -370,9 +365,7 @@ def assert_multi_images(resp: pb.Response, method: str, im_file: str) -> bool:
     arr = np.array(img)
     expected = arr * arr
     return assert_image(
-        resp.multipart.fields["result"],
-        assert_kind="image/bmp",
-        im_file=expected,
+        resp.multipart.fields["result"], assert_kind="image/bmp", im_file=expected
     )
 
 

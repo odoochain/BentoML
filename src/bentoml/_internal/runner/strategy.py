@@ -146,8 +146,7 @@ class DefaultStrategy(Strategy):
                     )
                 assigned_gpu = nvidia_gpus[
                     assigned_resource_per_worker
-                    * worker_index : assigned_resource_per_worker
-                    * (worker_index + 1)
+                    * worker_index : assigned_resource_per_worker * (worker_index + 1)
                 ]
                 dev = ",".join(map(str, assigned_gpu))
             else:

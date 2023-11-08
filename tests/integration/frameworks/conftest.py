@@ -68,7 +68,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 
 
 def generate_test_inputs(
-    framework: str | None,
+    framework: str | None
 ) -> list[tuple[ModuleType, FrameworkTestModel]]:
     if framework is None:
         frameworks = [

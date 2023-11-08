@@ -76,8 +76,7 @@ def get(tag_like: str | Tag) -> bentoml.Model:
 
 
 def load_model(
-    bento_model: str | Tag | bentoml.Model,
-    device_name: str = "/device:CPU:0",
+    bento_model: str | Tag | bentoml.Model, device_name: str = "/device:CPU:0"
 ) -> "tf_ext.KerasModel":
     """
     Load a model from BentoML local modelstore with given name.
@@ -124,8 +123,7 @@ def load_model(
 
     with tf.device(device_name):
         return keras.models.load_model(
-            bento_model.path,
-            custom_objects=bento_model.custom_objects,
+            bento_model.path, custom_objects=bento_model.custom_objects
         )
 
 
@@ -239,11 +237,7 @@ def save_model(
     )
 
     if signatures is None:
-        signatures = {
-            "predict": {
-                "batchable": False,
-            }
-        }
+        signatures = {"predict": {"batchable": False}}
         logger.info(
             'Using the default model signature for Keras (%s) for model "%s".',
             signatures,
@@ -274,9 +268,7 @@ def save_model(
         return bento_model
 
 
-def get_runnable(
-    bento_model: bentoml.Model,
-):
+def get_runnable(bento_model: bentoml.Model):
     """
     Private API: use :obj:`~bentoml.Model.to_runnable` instead.
     """
@@ -339,8 +331,7 @@ def get_runnable(
 
     def add_run_method(method_name: str, options: ModelSignature):
         def run_method(
-            runnable_self: KerasRunnable,
-            *args: "KerasArgType",
+            runnable_self: KerasRunnable, *args: "KerasArgType"
         ) -> "ext.NpNDArray":
             _run_method = runnable_self.methods_cache.get(method_name)
             if not _run_method:

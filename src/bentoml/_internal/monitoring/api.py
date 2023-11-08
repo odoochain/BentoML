@@ -54,11 +54,12 @@ def monitor(
 @inject
 def monitor(
     name: str,
-    monitor_class: type[MT]
-    | str
-    | None = Provide[BentoMLContainer.config.monitoring.type],
-    monitor_options: dict[str, t.Any]
-    | None = Provide[BentoMLContainer.config.monitoring.options],
+    monitor_class: type[MT] | str | None = Provide[
+        BentoMLContainer.config.monitoring.type
+    ],
+    monitor_options: dict[str, t.Any] | None = Provide[
+        BentoMLContainer.config.monitoring.options
+    ],
 ) -> t.Generator[MT | MonitorBase[t.Any], None, None]:
     """
     Context manager for monitoring.

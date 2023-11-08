@@ -86,9 +86,7 @@ def add_deployment_command(cli: click.Group) -> None:
     @output_option
     @click.pass_obj
     def create(  # type: ignore
-        shared_options: SharedOptions,
-        file: str,
-        output: t.Literal["json", "default"],
+        shared_options: SharedOptions, file: str, output: t.Literal["json", "default"]
     ) -> DeploymentSchema:
         """Create a deployment on BentoCloud.
 

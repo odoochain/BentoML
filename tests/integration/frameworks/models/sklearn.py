@@ -38,23 +38,10 @@ res = np.array(
 
 random_forest_classifier = FrameworkTestModel(
     name="classification",
-    save_kwargs={
-        "signatures": {
-            "predict": {"batchable": False},
-        }
-    },
+    save_kwargs={"signatures": {"predict": {"batchable": False}}},
     model=RandomForestClassifier().fit(X, y),
     configurations=[
-        Config(
-            test_inputs={
-                "predict": [
-                    Input(
-                        input_args=[X],
-                        expected=res,
-                    ),
-                ],
-            },
-        ),
+        Config(test_inputs={"predict": [Input(input_args=[X], expected=res)]})
     ],
 )
 

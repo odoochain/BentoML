@@ -37,7 +37,8 @@ if TYPE_CHECKING:
             ...
 
         def construct_build_args(
-            self, **kwargs: t.Any  # pylint: disable=unused-argument
+            self,
+            **kwargs: t.Any,  # pylint: disable=unused-argument
         ) -> Arguments:
             ...
 
@@ -224,9 +225,7 @@ def build(
     builder = get_backend(backend)
     context_path, dockerfile = clean_context.enter_context(
         construct_containerfile(
-            bento,
-            features=features,
-            enable_buildkit=enable_buildkit(builder=builder),
+            bento, features=features, enable_buildkit=enable_buildkit(builder=builder)
         )
     )
     try:
@@ -365,10 +364,4 @@ register_default_backends()
 
 REGISTERED_BACKENDS = list(BUILDER_REGISTRY.keys())
 
-__all__ = [
-    "build",
-    "health",
-    "register_backend",
-    "get_backend",
-    "REGISTERED_BACKENDS",
-]
+__all__ = ["build", "health", "register_backend", "get_backend", "REGISTERED_BACKENDS"]

@@ -9,10 +9,7 @@ if TYPE_CHECKING:
     from circus.sockets import CircusSocket
     from circus.watcher import Watcher
 
-__all__ = [
-    "create_circus_socket_from_uri",
-    "create_standalone_arbiter",
-]
+__all__ = ["create_circus_socket_from_uri", "create_standalone_arbiter"]
 
 
 def create_circus_socket_from_uri(
@@ -24,19 +21,10 @@ def create_circus_socket_from_uri(
 
     parsed = urlparse(uri)
     if parsed.scheme in ("file", "unix"):
-        return CircusSocket(
-            name=name,
-            path=uri_to_path(uri),
-            *args,
-            **kwargs,
-        )
+        return CircusSocket(name=name, path=uri_to_path(uri), *args, **kwargs)
     elif parsed.scheme == "tcp":
         return CircusSocket(
-            name=name,
-            host=parsed.hostname,
-            port=parsed.port,
-            *args,
-            **kwargs,
+            name=name, host=parsed.hostname, port=parsed.port, *args, **kwargs
         )
     else:
         raise ValueError(f"Unsupported URI scheme: {parsed.scheme}")

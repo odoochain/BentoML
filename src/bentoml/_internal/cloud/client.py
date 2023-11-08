@@ -517,8 +517,7 @@ class RestApiClient:
         self, model_repository_name: str, query: str | None = None
     ) -> ModelSchema | None:
         url = urljoin(
-            self.endpoint,
-            f"/api/v1/model_repositories/{model_repository_name}/models",
+            self.endpoint, f"/api/v1/model_repositories/{model_repository_name}/models"
         )
         params = {"start": "0", "count": "10"}
         if query:

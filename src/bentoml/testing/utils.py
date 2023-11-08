@@ -75,15 +75,9 @@ async def async_request(
             msg = f"'{assert_data.__name__}' returns {assert_data(body)}"
         else:
             msg = f"Expects data '{assert_data}'"
-        handle_assert_exception(
-            assert_data,
-            body,
-            f"{msg}\nReceived response: {body}.",
-        )
+        handle_assert_exception(assert_data, body, f"{msg}\nReceived response: {body}.")
     if assert_headers is not None:
         handle_assert_exception(
-            assert_headers,
-            resp.headers,
-            f"Headers assertion failed: {resp.headers!r}",
+            assert_headers, resp.headers, f"Headers assertion failed: {resp.headers!r}"
         )
     return resp.status, Headers(resp.headers), body

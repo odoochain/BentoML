@@ -195,9 +195,9 @@ class File(
     def openapi_request_body(self) -> dict[str, t.Any]:
         return {
             "content": {
-                "*/*"
-                if self._mime_type is None
-                else self._mime_type: MediaType(schema=self.openapi_schema())
+                "*/*" if self._mime_type is None else self._mime_type: MediaType(
+                    schema=self.openapi_schema()
+                )
             },
             "required": True,
             "x-bentoml-io-descriptor": self.to_spec(),
@@ -207,9 +207,9 @@ class File(
         return {
             "description": SUCCESS_DESCRIPTION,
             "content": {
-                "*/*"
-                if self._mime_type is None
-                else self._mime_type: MediaType(schema=self.openapi_schema())
+                "*/*" if self._mime_type is None else self._mime_type: MediaType(
+                    schema=self.openapi_schema()
+                )
             },
             "x-bentoml-io-descriptor": self.to_spec(),
         }
@@ -281,10 +281,7 @@ class BytesIOFile(File, descriptor_id=None):
     def to_spec(self) -> dict[str, t.Any]:
         return {
             "id": super().descriptor_id,
-            "args": {
-                "kind": "binaryio",
-                "mime_type": self._mime_type,
-            },
+            "args": {"kind": "binaryio", "mime_type": self._mime_type},
         }
 
     async def from_http_request(self, request: Request) -> FileLike[bytes]:
@@ -327,11 +324,11 @@ class BytesIOFile(File, descriptor_id=None):
                     mime_type = mapping[field.kind]
                     if self._mime_type is not None and mime_type != self._mime_type:
                         raise BadInput(
-                            f"Inferred mime_type from 'kind' is '{mime_type}', while '{self!r}' is expecting '{self._mime_type}'",
+                            f"Inferred mime_type from 'kind' is '{mime_type}', while '{self!r}' is expecting '{self._mime_type}'"
                         )
                 except KeyError:
                     raise BadInput(
-                        f"{field.kind} is not a valid File kind. Accepted file kind: {[names for names,_ in pb_v1alpha1.File.FileType.items()]}",
+                        f"{field.kind} is not a valid File kind. Accepted file kind: {[names for names,_ in pb_v1alpha1.File.FileType.items()]}"
                     ) from None
             content = field.content
             if not content:
@@ -345,7 +342,7 @@ class BytesIOFile(File, descriptor_id=None):
                 and field.kind != self._mime_type
             ):
                 raise BadInput(
-                    f"MIME type from 'kind' is '{field.kind}', while '{self!r}' is expecting '{self._mime_type}'",
+                    f"MIME type from 'kind' is '{field.kind}', while '{self!r}' is expecting '{self._mime_type}'"
                 )
             content = field.content
             if not content:

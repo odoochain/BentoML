@@ -219,13 +219,15 @@ class Server(ABC, t.Generic[ClientType]):
             if self.process.stdout is not None and not self.process.stdout.closed:
                 s = self.process.stdout.read()
                 logs += textwrap.indent(
-                    s.decode("utf-8") if isinstance(s, bytes) else s, " " * 4  # type: ignore  # may be string
+                    s.decode("utf-8") if isinstance(s, bytes) else s,
+                    " " * 4,  # type: ignore  # may be string
                 )
             if self.process.stderr is not None and not self.process.stderr.closed:
                 logs += "\nServer Error:\n"
                 s = self.process.stderr.read()
                 logs += textwrap.indent(
-                    s.decode("utf-8") if isinstance(s, bytes) else s, " " * 4  # type: ignore  # may be string
+                    s.decode("utf-8") if isinstance(s, bytes) else s,
+                    " " * 4,  # type: ignore  # may be string
                 )
             raise ServerStateException(logs)
         return self._get_client()
@@ -253,13 +255,15 @@ class Server(ABC, t.Generic[ClientType]):
             if self.process.stdout is not None and not self.process.stdout.closed:
                 s = self.process.stdout.read()
                 logs += textwrap.indent(
-                    s.decode("utf-8") if isinstance(s, bytes) else s, " " * 4  # type: ignore  # may be string
+                    s.decode("utf-8") if isinstance(s, bytes) else s,
+                    " " * 4,  # type: ignore  # may be string
                 )
             if self.process.stderr is not None and not self.process.stderr.closed:
                 logs += "\nServer Error:\n"
                 s = self.process.stderr.read()
                 logs += textwrap.indent(
-                    s.decode("utf-8") if isinstance(s, bytes) else s, " " * 4  # type: ignore  # may be string
+                    s.decode("utf-8") if isinstance(s, bytes) else s,
+                    " " * 4,  # type: ignore  # may be string
                 )
             logger.warning(logs)
             return
@@ -316,8 +320,9 @@ class HTTPServer(Server[HTTPClient]):
         backlog: int = Provide[BentoMLContainer.api_server_config.backlog],
         ssl_certfile: str | None = Provide[BentoMLContainer.ssl.certfile],
         ssl_keyfile: str | None = Provide[BentoMLContainer.ssl.keyfile],
-        ssl_keyfile_password: str
-        | None = Provide[BentoMLContainer.ssl.keyfile_password],
+        ssl_keyfile_password: str | None = Provide[
+            BentoMLContainer.ssl.keyfile_password
+        ],
         ssl_version: int | None = Provide[BentoMLContainer.ssl.version],
         ssl_cert_reqs: int | None = Provide[BentoMLContainer.ssl.cert_reqs],
         ssl_ca_certs: str | None = Provide[BentoMLContainer.ssl.ca_certs],
@@ -394,8 +399,9 @@ class GrpcServer(Server[GrpcClient]):
         backlog: int = Provide[BentoMLContainer.api_server_config.backlog],
         enable_reflection: bool = Provide[BentoMLContainer.grpc.reflection.enabled],
         enable_channelz: bool = Provide[BentoMLContainer.grpc.channelz.enabled],
-        max_concurrent_streams: int
-        | None = Provide[BentoMLContainer.grpc.max_concurrent_streams],
+        max_concurrent_streams: int | None = Provide[
+            BentoMLContainer.grpc.max_concurrent_streams
+        ],
         ssl_certfile: str | None = Provide[BentoMLContainer.ssl.certfile],
         ssl_keyfile: str | None = Provide[BentoMLContainer.ssl.keyfile],
         ssl_ca_certs: str | None = Provide[BentoMLContainer.ssl.ca_certs],

@@ -133,9 +133,7 @@ class PrometheusServerInterceptor(aio.ServerInterceptor):
                     http_response_code=to_http_status(
                         t.cast(grpc.StatusCode, context.code())
                     ),
-                ).observe(
-                    total_time
-                )
+                ).observe(total_time)
                 START_TIME_VAR.set(0)
                 # instrument request in progress
                 with self.metrics_request_in_progress.labels(

@@ -162,13 +162,7 @@ class Service:
                         ).save(tmp_bento_store)
                         return load_bento_dir(bento.path)
 
-                return (
-                    load_exported_bento,
-                    (
-                        self.bento.tag,
-                        content,
-                    ),
-                )
+                return (load_exported_bento, (self.bento.tag, content))
             elif serialization_strategy == "LOCAL_BENTO":
                 return (load, (self.bento.tag,))
             else:
@@ -304,7 +298,7 @@ class Service:
         """Decorator for adding InferenceAPI to this service"""
 
         def decorator(
-            fn: _inference_api_wrapper[IOType],
+            fn: _inference_api_wrapper[IOType]
         ) -> _inference_api_wrapper[IOType]:
             _api = InferenceAPI[IOType](
                 name=first_not_none(name, default=fn.__name__),
@@ -406,8 +400,7 @@ class Service:
             A bento gRPC servicer implementation.
         """
         return importlib.import_module(
-            f".grpc.servicer.{protocol_version}",
-            package="bentoml._internal.server",
+            f".grpc.servicer.{protocol_version}", package="bentoml._internal.server"
         ).create_bento_servicer(self)
 
     @property

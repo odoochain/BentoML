@@ -13,7 +13,7 @@ try:
     from ray.serve.deployment import Deployment as RayDeployment
 except ImportError:  # pragma: no cover
     raise MissingDependencyException(
-        "'ray' is required in order to use module 'bentoml.ray', install with 'pip install -U \"ray[serve]\"'. For more information, refer to https://docs.ray.io/",
+        "'ray' is required in order to use module 'bentoml.ray', install with 'pip install -U \"ray[serve]\"'. For more information, refer to https://docs.ray.io/"
     )
 
 if t.TYPE_CHECKING:
