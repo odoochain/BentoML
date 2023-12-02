@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import sys
 import json
 import logging
+import os
+import sys
 from urllib.parse import urlparse
 
 import click
@@ -11,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 def add_start_command(cli: click.Group) -> None:
-
-    from bentoml._internal.utils import add_experimental_docstring
     from bentoml._internal.configuration.containers import BentoMLContainer
+    from bentoml._internal.utils import add_experimental_docstring
+    from bentoml.grpc.utils import LATEST_PROTOCOL_VERSION
 
     @cli.command(hidden=True)
     @click.argument("bento", type=click.STRING, default=".")
@@ -68,52 +69,58 @@ def add_start_command(cli: click.Group) -> None:
         envvar="BENTOML_API_WORKERS",
     )
     @click.option(
+        "--timeout",
+        type=click.INT,
+        help="Specify the timeout (seconds) for API server",
+        envvar="BENTOML_TIMEOUT",
+    )
+    @click.option(
         "--working-dir",
         type=click.Path(),
         help="When loading from source code, specify the directory to find the Service instance",
-        default=".",
+        default=None,
         show_default=True,
     )
     @click.option(
         "--ssl-certfile",
         type=str,
-        default=None,
+        default=BentoMLContainer.ssl.certfile.get(),
         help="SSL certificate file",
     )
     @click.option(
         "--ssl-keyfile",
         type=str,
-        default=None,
+        default=BentoMLContainer.ssl.keyfile.get(),
         help="SSL key file",
     )
     @click.option(
         "--ssl-keyfile-password",
         type=str,
-        default=None,
+        default=BentoMLContainer.ssl.keyfile_password.get(),
         help="SSL keyfile password",
     )
     @click.option(
         "--ssl-version",
         type=int,
-        default=None,
+        default=BentoMLContainer.ssl.version.get(),
         help="SSL version to use (see stdlib 'ssl' module)",
     )
     @click.option(
         "--ssl-cert-reqs",
         type=int,
-        default=None,
+        default=BentoMLContainer.ssl.cert_reqs.get(),
         help="Whether client certificate is required (see stdlib 'ssl' module)",
     )
     @click.option(
         "--ssl-ca-certs",
         type=str,
-        default=None,
+        default=BentoMLContainer.ssl.ca_certs.get(),
         help="CA certificates file",
     )
     @click.option(
         "--ssl-ciphers",
         type=str,
-        default=None,
+        default=BentoMLContainer.ssl.ciphers.get(),
         help="Ciphers to use (see stdlib 'ssl' module)",
     )
     @add_experimental_docstring
@@ -125,8 +132,9 @@ def add_start_command(cli: click.Group) -> None:
         port: int,
         host: str,
         backlog: int,
-        working_dir: str,
+        working_dir: str | None,
         api_workers: int | None,
+        timeout: int | None,
         ssl_certfile: str | None,
         ssl_keyfile: str | None,
         ssl_keyfile_password: str | None,
@@ -138,6 +146,11 @@ def add_start_command(cli: click.Group) -> None:
         """
         Start a HTTP API server standalone. This will be used inside Yatai.
         """
+        if working_dir is None:
+            if os.path.isdir(os.path.expanduser(bento)):
+                working_dir = os.path.expanduser(bento)
+            else:
+                working_dir = "."
         if sys.path[0] != working_dir:
             sys.path.insert(0, working_dir)
 
@@ -158,7 +171,7 @@ def add_start_command(cli: click.Group) -> None:
             host = parsed.hostname or host
             port = parsed.port or port
 
-        logger.info(" Using remote runners: %s", runner_map)
+        click.echo(f"Using remote runners: {runner_map}")
         start_http_server(
             bento,
             runner_map=runner_map_dict,
@@ -167,6 +180,7 @@ def add_start_command(cli: click.Group) -> None:
             host=host,
             backlog=backlog,
             api_workers=api_workers,
+            timeout=timeout,
             ssl_keyfile=ssl_keyfile,
             ssl_certfile=ssl_certfile,
             ssl_keyfile_password=ssl_keyfile_password,
@@ -218,8 +232,14 @@ def add_start_command(cli: click.Group) -> None:
         "--working-dir",
         type=click.Path(),
         help="When loading from source code, specify the directory to find the Service instance",
-        default=".",
+        default=None,
         show_default=True,
+    )
+    @click.option(
+        "--timeout",
+        type=click.INT,
+        help="Specify the timeout (seconds) for runners",
+        envvar="BENTOML_TIMEOUT",
     )
     @add_experimental_docstring
     def start_runner_server(  # type: ignore (unused warning)
@@ -230,10 +250,16 @@ def add_start_command(cli: click.Group) -> None:
         host: str,
         backlog: int,
         working_dir: str,
+        timeout: int | None,
     ) -> None:
         """
         Start Runner server standalone. This will be used inside Yatai.
         """
+        if working_dir is None:
+            if os.path.isdir(os.path.expanduser(bento)):
+                working_dir = os.path.expanduser(bento)
+            else:
+                working_dir = "."
         if sys.path[0] != working_dir:
             sys.path.insert(0, working_dir)
 
@@ -249,6 +275,7 @@ def add_start_command(cli: click.Group) -> None:
             bento,
             runner_name=runner_name,
             working_dir=working_dir,
+            timeout=timeout,
             port=port,
             host=host,
             backlog=backlog,
@@ -289,7 +316,7 @@ def add_start_command(cli: click.Group) -> None:
         "--working-dir",
         type=click.Path(),
         help="When loading from source code, specify the directory to find the Service instance",
-        default=".",
+        default=None,
         show_default=True,
     )
     @click.option(
@@ -307,6 +334,13 @@ def add_start_command(cli: click.Group) -> None:
         help="Enable reflection.",
     )
     @click.option(
+        "--enable-channelz",
+        is_flag=True,
+        default=BentoMLContainer.grpc.channelz.enabled.get(),
+        type=click.BOOL,
+        help="Enable Channelz. See https://github.com/grpc/proposal/blob/master/A14-channelz.md.",
+    )
+    @click.option(
         "--max-concurrent-streams",
         default=BentoMLContainer.grpc.max_concurrent_streams.get(),
         type=click.INT,
@@ -315,20 +349,28 @@ def add_start_command(cli: click.Group) -> None:
     @click.option(
         "--ssl-certfile",
         type=str,
-        default=None,
+        default=BentoMLContainer.ssl.certfile.get(),
         help="SSL certificate file",
     )
     @click.option(
         "--ssl-keyfile",
         type=str,
-        default=None,
+        default=BentoMLContainer.ssl.keyfile.get(),
         help="SSL key file",
     )
     @click.option(
         "--ssl-ca-certs",
         type=str,
-        default=None,
+        default=BentoMLContainer.ssl.ca_certs.get(),
         help="CA certificates file",
+    )
+    @click.option(
+        "-pv",
+        "--protocol-version",
+        type=click.Choice(["v1", "v1alpha1"]),
+        help="Determine the version of generated gRPC stubs to use.",
+        default=LATEST_PROTOCOL_VERSION,
+        show_default=True,
     )
     @add_experimental_docstring
     def start_grpc_server(  # type: ignore (unused warning)
@@ -343,18 +385,25 @@ def add_start_command(cli: click.Group) -> None:
         ssl_keyfile: str | None,
         enable_reflection: bool,
         ssl_ca_certs: str | None,
+        enable_channelz: bool,
         max_concurrent_streams: int | None,
+        protocol_version: str,
     ) -> None:
         """
         Start a gRPC API server standalone. This will be used inside Yatai.
         """
+        if working_dir is None:
+            if os.path.isdir(os.path.expanduser(bento)):
+                working_dir = os.path.expanduser(bento)
+            else:
+                working_dir = "."
         if sys.path[0] != working_dir:
             sys.path.insert(0, working_dir)
 
         from bentoml.start import start_grpc_server
 
         runner_map = dict([s.split("=", maxsplit=2) for s in remote_runner or []])
-        logger.info(" Using remote runners: %s", runner_map)
+        click.echo(f"Using remote runners: {runner_map}")
         start_grpc_server(
             bento,
             runner_map=runner_map,
@@ -367,5 +416,7 @@ def add_start_command(cli: click.Group) -> None:
             ssl_keyfile=ssl_keyfile,
             ssl_certfile=ssl_certfile,
             ssl_ca_certs=ssl_ca_certs,
+            channelz=enable_channelz,
             max_concurrent_streams=max_concurrent_streams,
+            protocol_version=protocol_version,
         )

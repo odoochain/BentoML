@@ -40,6 +40,13 @@ import click
     help="Enable reflection.",
 )
 @click.option(
+    "--enable-channelz",
+    type=click.BOOL,
+    is_flag=True,
+    help="Enable channelz.",
+    default=False,
+)
+@click.option(
     "--max-concurrent-streams",
     type=click.INT,
     help="Maximum number of concurrent incoming streams to allow on a HTTP2 connection.",
@@ -63,6 +70,21 @@ import click
     default=None,
     help="CA certificates file",
 )
+@click.option(
+    "--protocol-version",
+    type=click.Choice(["v1", "v1alpha1"]),
+    help="Determine the version of generated gRPC stubs to use.",
+    default="v1",
+    show_default=True,
+)
+@click.option(
+    "--development-mode",
+    type=click.BOOL,
+    help="Run the API server in development mode",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
 def main(
     bento_identifier: str,
     host: str,
@@ -72,10 +94,13 @@ def main(
     working_dir: str | None,
     worker_id: int | None,
     enable_reflection: bool,
+    enable_channelz: bool,
     max_concurrent_streams: int | None,
     ssl_certfile: str | None,
     ssl_keyfile: str | None,
     ssl_ca_certs: str | None,
+    protocol_version: str,
+    development_mode: bool,
 ):
     """
     Start BentoML API server.
@@ -84,15 +109,20 @@ def main(
     """
 
     import bentoml
-    from bentoml._internal.log import configure_server_logging
-    from bentoml._internal.context import component_context
     from bentoml._internal.configuration.containers import BentoMLContainer
+    from bentoml._internal.context import component_context
+    from bentoml._internal.log import configure_server_logging
 
     component_context.component_type = "grpc_api_server"
     component_context.component_index = worker_id
     configure_server_logging()
 
-    BentoMLContainer.development_mode.set(False)
+    if worker_id is None:
+        # worker ID is not set; this server is running in standalone mode
+        # and should not be concerned with the status of its runners
+        BentoMLContainer.config.runner_probe.enabled.set(False)
+
+    BentoMLContainer.development_mode.set(development_mode)
     if prometheus_dir is not None:
         BentoMLContainer.prometheus_multiproc_dir.set(prometheus_dir)
     if runner_map is not None:
@@ -113,11 +143,13 @@ def main(
         component_context.bento_name = svc.tag.name
         component_context.bento_version = svc.tag.version or "not available"
 
-    from bentoml._internal.server import grpc
+    from bentoml._internal.server import grpc_app as grpc
 
     grpc_options: dict[str, t.Any] = {
         "bind_address": f"{host}:{port}",
         "enable_reflection": enable_reflection,
+        "enable_channelz": enable_channelz,
+        "protocol_version": protocol_version,
     }
     if max_concurrent_streams:
         grpc_options["max_concurrent_streams"] = int(max_concurrent_streams)
@@ -128,7 +160,7 @@ def main(
     if ssl_ca_certs:
         grpc_options["ssl_ca_certs"] = ssl_ca_certs
 
-    grpc.Server(svc.grpc_servicer, **grpc_options).run()
+    grpc.Server(svc, **grpc_options).run()
 
 
 if __name__ == "__main__":

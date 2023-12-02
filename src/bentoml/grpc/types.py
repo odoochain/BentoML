@@ -13,9 +13,9 @@ if TYPE_CHECKING:
     import grpc
     from grpc import aio
 
-    from bentoml.grpc.v1alpha1.service_pb2 import Request
-    from bentoml.grpc.v1alpha1.service_pb2 import Response
-    from bentoml.grpc.v1alpha1.service_pb2_grpc import BentoServiceServicer
+    from bentoml.grpc.v1.service_pb2 import Request
+    from bentoml.grpc.v1.service_pb2 import Response
+    from bentoml.grpc.v1.service_pb2_grpc import BentoServiceServicer
 
     P = t.TypeVar("P")
 
@@ -94,9 +94,6 @@ if TYPE_CHECKING:
         t.Callable[[], aio.ServerInterceptor] | partial[aio.ServerInterceptor]
     ]
 
-    # types defined for client interceptors
-    BentoUnaryUnaryCall = aio.UnaryUnaryCall[Request, Response]
-
     __all__ = [
         "Request",
         "Response",
@@ -104,5 +101,4 @@ if TYPE_CHECKING:
         "BentoServiceServicer",
         "HandlerCallDetails",
         "RpcMethodHandler",
-        "BentoUnaryUnaryCall",
     ]

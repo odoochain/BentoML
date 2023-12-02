@@ -1,40 +1,31 @@
 from __future__ import annotations
 
-import typing as t
 import logging
+import typing as t
+from dataclasses import dataclass
+from functools import lru_cache
 from http import HTTPStatus
 from typing import TYPE_CHECKING
-from functools import lru_cache
-from dataclasses import dataclass
 
-from bentoml.exceptions import InvalidArgument
+from ..._internal.utils import resolve_user_filepath
+from ...exceptions import InvalidArgument
+from ._import_hook import LATEST_PROTOCOL_VERSION
+from ._import_hook import import_generated_stubs
+from ._import_hook import import_grpc
 
 if TYPE_CHECKING:
-    import types
     from enum import Enum
 
     import grpc
 
-    from bentoml.exceptions import BentoMLException
-    from bentoml.grpc.types import ProtoField
-    from bentoml.grpc.types import RpcMethodHandler
-    from bentoml.grpc.types import BentoServicerContext
-    from bentoml.grpc.v1alpha1 import service_pb2 as pb
-    from bentoml._internal.io_descriptors import IODescriptor
-
-    # We need this here so that __all__ is detected due to lazy import
-    def import_generated_stubs(
-        version: str = "v1alpha1",
-    ) -> tuple[types.ModuleType, types.ModuleType]:
-        ...
-
-    def import_grpc() -> tuple[types.ModuleType, types.ModuleType]:
-        ...
+    from ..._internal.io_descriptors import IODescriptor
+    from ...exceptions import BentoMLException
+    from ..types import BentoServicerContext
+    from ..types import ProtoField
+    from ..types import RpcMethodHandler
+    from ..v1 import service_pb2 as pb
 
 else:
-    from bentoml.grpc.utils._import_hook import import_grpc
-    from bentoml.grpc.utils._import_hook import import_generated_stubs
-
     pb, _ = import_generated_stubs()
     grpc, _ = import_grpc()
 
@@ -46,6 +37,8 @@ __all__ = [
     "import_generated_stubs",
     "import_grpc",
     "validate_proto_fields",
+    "LATEST_PROTOCOL_VERSION",
+    "load_from_file",
 ]
 
 logger = logging.getLogger(__name__)
@@ -54,12 +47,18 @@ logger = logging.getLogger(__name__)
 GRPC_CONTENT_TYPE = "application/grpc"
 
 
+def load_from_file(p: str) -> bytes:
+    rp = resolve_user_filepath(p, ctx=None)
+    with open(rp, "rb") as f:
+        return f.read()
+
+
 def validate_proto_fields(
     field: str | None, io_: IODescriptor[t.Any]
 ) -> str | ProtoField:
     if field is None:
         raise InvalidArgument('"field" cannot be empty.')
-    accepted_fields = io_._proto_fields + ("serialized_bytes",)
+    accepted_fields = io_.proto_fields + ("serialized_bytes",)
     if field not in accepted_fields:
         raise InvalidArgument(
             f"'{io_.__class__.__name__}' accepts one of the following fields: '{','.join(accepted_fields)}' got '{field}' instead.",
@@ -90,29 +89,6 @@ def http_status_to_grpc_status_map() -> dict[Enum, grpc.StatusCode]:
 @lru_cache(maxsize=1)
 def grpc_status_to_http_status_map() -> dict[grpc.StatusCode, Enum]:
     return {v: k for k, v in http_status_to_grpc_status_map().items()}
-
-
-@lru_cache(maxsize=1)
-def filetype_pb_to_mimetype_map() -> dict[pb.File.FileType.ValueType, str]:
-    return {
-        pb.File.FILE_TYPE_CSV: "text/csv",
-        pb.File.FILE_TYPE_PLAINTEXT: "text/plain",
-        pb.File.FILE_TYPE_JSON: "application/json",
-        pb.File.FILE_TYPE_BYTES: "application/octet-stream",
-        pb.File.FILE_TYPE_PDF: "application/pdf",
-        pb.File.FILE_TYPE_PNG: "image/png",
-        pb.File.FILE_TYPE_JPEG: "image/jpeg",
-        pb.File.FILE_TYPE_GIF: "image/gif",
-        pb.File.FILE_TYPE_TIFF: "image/tiff",
-        pb.File.FILE_TYPE_BMP: "image/bmp",
-        pb.File.FILE_TYPE_WEBP: "image/webp",
-        pb.File.FILE_TYPE_SVG: "image/svg+xml",
-    }
-
-
-@lru_cache(maxsize=1)
-def mimetype_to_filetype_pb_map() -> dict[str, pb.File.FileType.ValueType]:
-    return {v: k for k, v in filetype_pb_to_mimetype_map().items()}
 
 
 def grpc_status_code(err: BentoMLException) -> grpc.StatusCode:

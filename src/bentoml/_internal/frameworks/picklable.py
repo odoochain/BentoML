@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import typing as t
 import logging
+import typing as t
 from types import ModuleType
 from typing import TYPE_CHECKING
 
@@ -9,15 +9,14 @@ import cloudpickle
 
 import bentoml
 from bentoml import Tag
+from bentoml.exceptions import NotFound
 from bentoml.models import Model
 from bentoml.models import ModelContext
-from bentoml.exceptions import NotFound
-from bentoml.exceptions import BentoMLException
-from bentoml.exceptions import MissingDependencyException
 
 from ..models import PKL_EXT
 from ..models import SAVE_NAMESPACE
 from ..models.model import ModelSignature
+from ..models.model import PartialKwargsModelOptions as ModelOptions
 
 if TYPE_CHECKING:
     from .. import external_typing as ext
@@ -45,15 +44,17 @@ def load_model(bento_model: str | Tag | Model) -> ModelType:
     Load the picklable model with the given tag from the local BentoML model store.
 
     Args:
-        bento_model (``str`` ``|`` :obj:`~bentoml.Tag` ``|`` :obj:`~bentoml.Model`):
-            Either the tag of the model to get from the store, or a BentoML `~bentoml.Model`
-            instance to load the model from.
-        ...
+        bento_model: Either the tag of the model to get from the store,
+                     or a BentoML :class:`~bentoml.Model` instance to load
+                     the model from.
+
     Returns:
-        ``object``
-            The picklable model loaded from the model store or BentoML :obj:`~bentoml.Model`.
+        The picklable model loaded from the model store or BentoML :obj:`~bentoml.Model`.
+
     Example:
+
     .. code-block:: python
+
         import bentoml
 
         picklable_model = bentoml.picklable_model.load_model('my_model:latest')
@@ -62,7 +63,7 @@ def load_model(bento_model: str | Tag | Model) -> ModelType:
         bento_model = get(bento_model)
 
     if bento_model.info.module not in (MODULE_NAME, __name__):
-        raise BentoMLException(
+        raise NotFound(
             f"Model {bento_model.tag} was saved with module {bento_model.info.module}, not loading with {MODULE_NAME}."
         )
 
@@ -75,7 +76,7 @@ def load_model(bento_model: str | Tag | Model) -> ModelType:
 
 
 def save_model(
-    name: str,
+    name: Tag | str,
     model: ModelType,
     *,
     signatures: dict[str, ModelSignature] | None = None,
@@ -88,27 +89,20 @@ def save_model(
     Save a model instance to BentoML modelstore.
 
     Args:
-        name (:code:`str`):
-            Name for given model instance. This should pass Python identifier check.
-        model (:code:`Union[BaseEstimator, Pipeline]`):
-            Instance of model to be saved.
-        signatures (:code: `Dict[str, ModelSignatureDict]`)
-            Methods to expose for running inference on the target model. Signatures are
-             used for creating Runner instances when serving model with bentoml.Service
-        labels (:code:`Dict[str, str]`, `optional`, default to :code:`None`):
-            user-defined labels for managing models, e.g. team=nlp, stage=dev
-        custom_objects (:code:`Dict[str, Any]]`, `optional`, default to :code:`None`):
-            user-defined additional python objects to be saved alongside the model,
-             e.g. a tokenizer instance, preprocessor function, model configuration json
-        external_modules (:code:`List[ModuleType]`, `optional`, default to :code:`None`):
-            user-defined additional python modules to be saved alongside the model or custom objects,
-            e.g. a tokenizer module, preprocessor module, model configuration module
-        metadata (:code:`Dict[str, Any]`, `optional`,  default to :code:`None`):
-            Custom metadata for given model.
+        name: Name for given model instance. This should pass Python identifier check.
+        model: Instance of model to be saved.
+        signatures: Methods to expose for running inference on the target model. Signatures are
+                    used for creating Runner instances when serving model with bentoml.Service
+        labels: user-defined labels for managing models, e.g. team=nlp, stage=dev
+        custom_objects: user-defined additional python objects to be saved alongside the model,
+                        e.g. a tokenizer instance, preprocessor function, model configuration json
+        external_modules: user-defined additional python modules to be saved alongside the model or custom objects,
+                          e.g. a tokenizer module, preprocessor module, model configuration module
+        metadata: Custom metadata for given model.
 
     Returns:
-        :obj:`~bentoml.Tag`: A :obj:`tag` with a format `name:version` where `name` is
-        the user-defined model's name, and a generated `version`.
+        :obj:`~bentoml.Tag`: A :obj:`tag` with a format ``name:version`` where ``name`` is
+        the user-defined model's name, and a generated ``version``.
 
     Examples:
 
@@ -124,10 +118,12 @@ def save_model(
     )
 
     if signatures is None:
-        logger.info(
-            'Using default model signature `{"__call__": {"batchable": False}}` for picklable model'
-        )
         signatures = {"__call__": ModelSignature(batchable=False)}
+        logger.info(
+            'Using the default model signature for pickable model (%s) for model "%s".',
+            signatures,
+            name,
+        )
 
     with bentoml.models.create(
         name,
@@ -139,8 +135,8 @@ def save_model(
         metadata=metadata,
         context=context,
         signatures=signatures,
+        options=ModelOptions(),
     ) as bento_model:
-
         with open(bento_model.path_of(f"{SAVE_NAMESPACE}{PKL_EXT}"), "wb") as f:
             cloudpickle.dump(model, f)
 
@@ -152,6 +148,8 @@ def get_runnable(bento_model: Model):
     Private API: use :obj:`~bentoml.Model.to_runnable` instead.
     """
 
+    partial_kwargs: t.Dict[str, t.Any] = bento_model.info.options.partial_kwargs  # type: ignore
+
     class PicklableRunnable(bentoml.Runnable):
         SUPPORTED_RESOURCES = ("cpu",)
         SUPPORTS_CPU_MULTI_THREADING = False
@@ -160,21 +158,27 @@ def get_runnable(bento_model: Model):
             super().__init__()
             self.model = load_model(bento_model)
 
-    def _get_run(method_name: str):
+    def _get_run(method_name: str, partial_kwargs: t.Dict[str, t.Any] | None = None):
+        if partial_kwargs is None:
+            partial_kwargs = {}
+
         def _run(
             self: PicklableRunnable,
             *args: ext.NpNDArray | ext.PdDataFrame,
             **kwargs: ext.NpNDArray | ext.PdDataFrame,
         ) -> ext.NpNDArray:
             assert isinstance(method_name, str), repr(method_name)
-            return getattr(self.model, method_name)(*args, **kwargs)
+            return getattr(self.model, method_name)(
+                *args, **dict(partial_kwargs, **kwargs)
+            )
 
         return _run
 
     for method_name, options in bento_model.info.signatures.items():
         assert isinstance(method_name, str), repr(method_name)
+        method_partial_kwargs = partial_kwargs.get(method_name)
         PicklableRunnable.add_method(
-            _get_run(method_name),
+            _get_run(method_name, method_partial_kwargs),
             name=method_name,
             batchable=options.batchable,
             batch_dim=options.batch_dim,

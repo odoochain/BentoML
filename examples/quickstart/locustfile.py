@@ -2,14 +2,14 @@ import time
 
 import grpc
 import numpy as np
-from locust import task
+from locust import HttpUser
 from locust import User
 from locust import between
-from locust import HttpUser
+from locust import task
 from sklearn import datasets
 
-from bentoml.grpc.v1alpha1 import service_pb2 as pb
-from bentoml.grpc.v1alpha1 import service_pb2_grpc as service
+from bentoml.grpc.v1 import service_pb2 as pb
+from bentoml.grpc.v1 import service_pb2_grpc as services
 
 test_data = datasets.load_iris().data
 num_of_rows = test_data.shape[0]
@@ -21,7 +21,7 @@ class IrisHttpUser(HttpUser):
     Usage:
         Run the iris_classifier service in production mode:
 
-            bentoml serve-http iris_classifier:latest --production
+            bentoml serve-http iris_classifier:latest
 
         Start locust load testing client with:
 
@@ -53,7 +53,7 @@ class GrpcUser(User):
 
     def on_start(self):
         self.channel = grpc.insecure_channel(self.host)
-        self.stub = service.BentoServiceStub(self.channel)
+        self.stub = services.BentoServiceStub(self.channel)
 
 
 class IrisGrpcUser(GrpcUser):
@@ -63,7 +63,7 @@ class IrisGrpcUser(GrpcUser):
     Usage:
         Run the iris_classifier service in production mode:
 
-            bentoml serve-grpc iris_classifier:latest --production
+            bentoml serve-grpc iris_classifier:latest
 
         Start locust load testing client with:
 

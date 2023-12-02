@@ -1,19 +1,21 @@
 from __future__ import annotations
 
-import typing as t
-import logging
-import functools
 import contextvars
+import functools
+import logging
+import typing as t
 from timeit import default_timer
 from typing import TYPE_CHECKING
 
-from simple_di import inject
 from simple_di import Provide
+from simple_di import inject
 
+from bentoml._internal.configuration.containers import BentoMLContainer
+from bentoml._internal.context import component_context
+from bentoml.grpc.utils import import_generated_stubs
+from bentoml.grpc.utils import import_grpc
 from bentoml.grpc.utils import to_http_status
 from bentoml.grpc.utils import wrap_rpc_handler
-from bentoml._internal.context import component_context
-from bentoml._internal.configuration.containers import BentoMLContainer
 
 START_TIME_VAR: contextvars.ContextVar[float] = contextvars.ContextVar("START_TIME_VAR")
 
@@ -21,18 +23,15 @@ if TYPE_CHECKING:
     import grpc
     from grpc import aio
 
+    from bentoml._internal.server.metrics.prometheus import PrometheusClient
+    from bentoml.grpc.types import AsyncHandlerMethod
+    from bentoml.grpc.types import BentoServicerContext
+    from bentoml.grpc.types import HandlerCallDetails
     from bentoml.grpc.types import Request
     from bentoml.grpc.types import Response
     from bentoml.grpc.types import RpcMethodHandler
-    from bentoml.grpc.types import AsyncHandlerMethod
-    from bentoml.grpc.types import HandlerCallDetails
-    from bentoml.grpc.types import BentoServicerContext
-    from bentoml.grpc.v1alpha1 import service_pb2 as pb
-    from bentoml._internal.server.metrics.prometheus import PrometheusClient
+    from bentoml.grpc.v1 import service_pb2 as pb
 else:
-    from bentoml.grpc.utils import import_grpc
-    from bentoml.grpc.utils import import_generated_stubs
-
     pb, _ = import_generated_stubs()
     grpc, aio = import_grpc()
 

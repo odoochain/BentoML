@@ -1,36 +1,31 @@
 from __future__ import annotations
 
-import typing as t
+import importlib
 import traceback
-from typing import TYPE_CHECKING
+import typing as t
 from contextlib import ExitStack
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 
-from bentoml.exceptions import BentoMLException
-from bentoml._internal.utils import LazyLoader
-from bentoml._internal.utils import reserve_free_port
-from bentoml._internal.utils import cached_contextmanager
-from bentoml._internal.utils import add_experimental_docstring
-from bentoml._internal.server.grpc.servicer import create_bento_servicer
-
-from .servicer import TestServiceServicer
+from ..._internal.utils import LazyLoader
+from ..._internal.utils import cached_contextmanager
+from ..._internal.utils import reserve_free_port
+from ...exceptions import BentoMLException
+from ...grpc.utils import LATEST_PROTOCOL_VERSION
+from ...grpc.utils import import_generated_stubs
+from ...grpc.utils import import_grpc
 
 if TYPE_CHECKING:
     import grpc
     import numpy as np
-    from grpc import aio
-    from numpy.typing import NDArray
-    from grpc.aio._channel import Channel
     from google.protobuf.message import Message
+    from grpc import aio
+    from grpc.aio._channel import Channel
+    from numpy.typing import NDArray
 
-    from bentoml.grpc.v1alpha1 import service_pb2 as pb
-    from bentoml.grpc.v1alpha1 import service_test_pb2_grpc as services_test
+    from ..._internal.service import Service
+    from ...grpc.v1 import service_pb2 as pb
 else:
-    from bentoml.grpc.utils import import_grpc
-    from bentoml.grpc.utils import import_generated_stubs
-
-    pb, _ = import_generated_stubs()
-    _, services_test = import_generated_stubs(file="service_test.proto")
     grpc, aio = import_grpc()  # pylint: disable=E1111
     np = LazyLoader("np", globals(), "numpy")
 
@@ -40,21 +35,42 @@ __all__ = [
     "make_pb_ndarray",
     "create_channel",
     "make_standalone_server",
-    "TestServiceServicer",
-    "create_bento_servicer",
+    "create_test_bento_servicer",
 ]
 
 
-def randomize_pb_ndarray(shape: tuple[int, ...]) -> pb.NDArray:
+def create_test_bento_servicer(
+    service: Service,
+    protocol_version: str = LATEST_PROTOCOL_VERSION,
+) -> t.Callable[[Service], t.Any]:
+    try:
+        module = importlib.import_module(
+            f".{protocol_version}", package="bentoml._internal.server.grpc.servicer"
+        )
+        return getattr(module, "create_bento_servicer")(service)
+    except (ImportError, ModuleNotFoundError):
+        raise BentoMLException(
+            f"Failed to load servicer implementation for version {protocol_version}"
+        ) from None
+
+
+def randomize_pb_ndarray(
+    shape: tuple[int, ...], protocol_version: str = LATEST_PROTOCOL_VERSION
+) -> pb.NDArray:
+    pb, _ = import_generated_stubs(protocol_version)
     arr: NDArray[np.float32] = t.cast("NDArray[np.float32]", np.random.rand(*shape))
     return pb.NDArray(
         shape=list(shape), dtype=pb.NDArray.DTYPE_FLOAT, float_values=arr.ravel()
     )
 
 
-def make_pb_ndarray(arr: NDArray[t.Any]) -> pb.NDArray:
+def make_pb_ndarray(
+    arr: NDArray[t.Any], protocol_version: str = LATEST_PROTOCOL_VERSION
+) -> pb.NDArray:
     from bentoml._internal.io_descriptors.numpy import npdtype_to_dtypepb_map
     from bentoml._internal.io_descriptors.numpy import npdtype_to_fieldpb_map
+
+    pb, _ = import_generated_stubs(protocol_version)
 
     try:
         fieldpb = npdtype_to_fieldpb_map()[arr.dtype]
@@ -76,17 +92,16 @@ async def async_client_call(
     method: str,
     channel: Channel,
     data: dict[str, Message | pb.Part | bytes | str | dict[str, t.Any]],
+    sanity: bool = True,
+    timeout: int | None = 90,
     assert_data: pb.Response | t.Callable[[pb.Response], bool] | None = None,
     assert_code: grpc.StatusCode | None = None,
     assert_details: str | None = None,
-    timeout: int | None = None,
-    sanity: bool = True,
-) -> pb.Response:
+    assert_trailing_metadata: aio.Metadata | None = None,
+    protocol_version: str = LATEST_PROTOCOL_VERSION,
+) -> pb.Response | None:
     """
-    Note that to use this function, 'channel' should not be created with any client interceptors,
-    since we will handle interceptors' lifecycle separately.
-
-    This function will also mimic the generated stubs function 'Call' from given 'channel'.
+    Invoke a given API method via a client.
 
     Args:
         method: The method name to call.
@@ -94,79 +109,71 @@ async def async_client_call(
                  any client interceptors. as we will handle interceptors' lifecycle separately.
         data: The data to send to the server.
         assert_data: The data to assert against the response.
-        assert_code: The code to assert against the response.
-        assert_details: The details to assert against the response.
         timeout: The timeout for the RPC.
         sanity: Whether to perform sanity check on the response.
+        assert_code: The code to assert against the response.
+        assert_details: The details to assert against the response.
 
     Returns:
         The response from the server.
     """
-    from bentoml.testing.grpc.interceptors import AssertClientInterceptor
+    pb, _ = import_generated_stubs(protocol_version)
 
-    if assert_code is None:
-        # by default, we want to check if the request is healthy
-        assert_code = grpc.StatusCode.OK
-    # We will add our own interceptors to the channel, which means
-    # We will have to check whether channel already has interceptors.
-    assert (
-        len(
-            list(
-                filter(
-                    lambda x: len(x) != 0,
-                    map(
-                        lambda stack: getattr(channel, stack),
-                        [
-                            "_unary_unary_interceptors",
-                            "_unary_stream_interceptors",
-                            "_stream_unary_interceptors",
-                            "_stream_stream_interceptors",
-                        ],
-                    ),
-                )
-            )
-        )
-        == 0
-    ), "'channel' shouldn't have any interceptors."
+    res: pb.Response | None = None
     try:
-        # we will handle adding our testing interceptors here.
-        # prefer not to use private attributes, but this will do
-        channel._unary_unary_interceptors.append(  # type: ignore (private warning)
-            AssertClientInterceptor(
-                assert_code=assert_code, assert_details=assert_details
-            )
-        )
         Call = channel.unary_unary(
-            "/bentoml.grpc.v1alpha1.BentoService/Call",
+            f"/bentoml.grpc.{protocol_version}.BentoService/Call",
             request_serializer=pb.Request.SerializeToString,
             response_deserializer=pb.Response.FromString,
         )
-        output = await t.cast(
-            t.Awaitable[pb.Response],
-            Call(pb.Request(api_name=method, **data), timeout=timeout),
+        output: aio.UnaryUnaryCall[pb.Request, pb.Response] = Call(
+            pb.Request(api_name=method, **data), timeout=timeout
         )
+        res = await t.cast(t.Awaitable[pb.Response], output)
+        return_code = await output.code()
+        details = await output.details()
+        trailing_metadata = await output.trailing_metadata()
         if sanity:
-            assert output
+            assert isinstance(res, pb.Response)
         if assert_data:
-            try:
-                if callable(assert_data):
-                    assert assert_data(output)
-                else:
-                    assert output == assert_data
-            except AssertionError:
-                raise AssertionError(f"Failed while checking data: {output}") from None
-        return output
-    finally:
-        # we will reset interceptors per call
-        channel._unary_unary_interceptors = []  # type: ignore (private warning)
+            if callable(assert_data):
+                assert assert_data(res), f"Failed while checking data: {output}"
+            else:
+                assert res == assert_data, f"Failed while checking data: {output}"
+    except aio.AioRpcError as call:
+        return_code = call.code()
+        details = call.details()
+        trailing_metadata = call.trailing_metadata()
+    if assert_code is not None:
+        assert (
+            return_code == assert_code
+        ), f"Method '{method}' returns {return_code} while expecting {assert_code}."
+    if assert_details is not None:
+        assert (
+            assert_details == details
+        ), f"Details '{assert_details}' is not in '{details}'."
+    if assert_trailing_metadata is not None:
+        assert (
+            trailing_metadata == assert_trailing_metadata
+        ), f"Trailing metadata '{trailing_metadata}' while expecting '{assert_trailing_metadata}'."
+    return res
 
 
 @asynccontextmanager
-@add_experimental_docstring
 async def create_channel(
-    host_url: str, interceptors: t.Sequence[aio.ClientInterceptor] | None = None
+    host_url: str,
+    interceptors: t.Sequence[aio.ClientInterceptor] | None = None,
 ) -> t.AsyncGenerator[Channel, None]:
-    """Create an async channel with given host_url and client interceptors."""
+    """
+    Create an async channel with given host_url and client interceptors.
+
+    Args:
+        host_url: The host url to connect to.
+        interceptors: The client interceptors to use. This is optional, by default set to None.
+
+    Returns:
+        A insecure channel.
+    """
     channel: Channel | None = None
     try:
         async with aio.insecure_channel(host_url, interceptors=interceptors) as channel:
@@ -181,7 +188,6 @@ async def create_channel(
             await channel.close()
 
 
-@add_experimental_docstring
 @cached_contextmanager("{interceptors}")
 def make_standalone_server(
     interceptors: t.Sequence[aio.ServerInterceptor] | None = None,
@@ -233,7 +239,6 @@ def make_standalone_server(
         interceptors=interceptors,
         options=(("grpc.so_reuseport", 1),),
     )
-    services_test.add_TestServiceServicer_to_server(TestServiceServicer(), server)  # type: ignore (no async types) # pylint: disable=E0601
     server.add_insecure_port(f"{host}:{port}")
     print("Using port %d..." % port)
     try:

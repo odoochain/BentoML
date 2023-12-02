@@ -1,34 +1,31 @@
 from __future__ import annotations
 
-import pickle
-import typing as t
-import logging
 import functools
 import itertools
+import logging
+import pickle
+import typing as t
 from typing import TYPE_CHECKING
 
-from simple_di import inject
 from simple_di import Provide
+from simple_di import inject
 
 import bentoml
 
-from ...types import LazyType
 from ....exceptions import MissingDependencyException
+from ...configuration.containers import BentoMLContainer
 from ...models.model import Model
-from ...runner.utils import Params
-from ...runner.container import Payload
 from ...runner.container import DataContainer
 from ...runner.container import DataContainerRegistry
-from ...configuration.containers import BentoMLContainer
+from ...runner.container import Payload
+from ...runner.utils import Params
+from ...types import LazyType
 
 try:
     import torch
 except ImportError:  # pragma: no cover
     raise MissingDependencyException(
-        "`torch` is required in order to use module `bentoml.pytorch`, "
-        "`bentoml.torchscript` or `bentoml.pytorch_lightning`. Install torch with `pip "
-        "install torch`. For more information, refer to "
-        "https://pytorch.org/get-started/locally/"
+        "'torch' is required in order to use module 'bentoml.pytorch', 'bentoml.torchscript' or 'bentoml.pytorch_lightning'. Install torch with 'pip install torch'. For more information, refer to https://pytorch.org/get-started/locally/"
     )
 
 if TYPE_CHECKING:
@@ -36,7 +33,8 @@ if TYPE_CHECKING:
 
     from ... import external_typing as ext
 
-    ModelType = t.Union[torch.nn.Module, torch.ScriptModule, pl.LightningModule]
+    ModelType = torch.nn.Module | torch.ScriptModule | pl.LightningModule
+    T = t.TypeVar("T")
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +45,8 @@ else:
 
 
 def partial_class(
-    cls: t.Type[PytorchModelRunnable], *args: t.Any, **kwargs: t.Any
-) -> type:
+    cls: type[PytorchModelRunnable], *args: t.Any, **kwargs: t.Any
+) -> type[PytorchModelRunnable]:
     class NewClass(cls):
         def __init__(self, *inner_args: t.Any, **inner_kwargs: t.Any) -> None:
             functools.partial(cls.__init__, *args, **kwargs)(
@@ -71,16 +69,22 @@ class PytorchModelRunnable(bentoml.Runnable):
         # if torch.cuda.device_count():
         if torch.cuda.is_available():
             self.device_id = "cuda"
-            torch.set_default_tensor_type(
-                "torch.cuda.FloatTensor"
-            )  # initially torch.FloatTensor
+            # by default, torch.FloatTensor will be used on CPU.
+            torch.set_default_tensor_type("torch.cuda.FloatTensor")
         else:
             self.device_id = "cpu"
         self.model: ModelType = loader(bento_model, device_id=self.device_id)
-        self.model.train(False)  # to turn off dropout and batchnorm
+        # We want to turn off dropout and batchnorm when running inference.
+        self.model.train(False)
 
 
-def make_pytorch_runnable_method(method_name: str) -> t.Callable[..., torch.Tensor]:
+def make_pytorch_runnable_method(
+    method_name: str,
+    partial_kwargs: dict[str, t.Any] | None = None,
+) -> t.Callable[..., torch.Tensor]:
+    if partial_kwargs is None:
+        partial_kwargs = {}
+
     def _run(
         self: PytorchModelRunnable,
         *args: ext.PdDataFrame | ext.NpNDArray | torch.Tensor,
@@ -88,7 +92,7 @@ def make_pytorch_runnable_method(method_name: str) -> t.Callable[..., torch.Tens
     ) -> torch.Tensor:
         params = Params(*args, **kwargs)
 
-        def _mapping(item: t.Any) -> t.Any:
+        def _mapping(item: T) -> torch.Tensor | T:
             if LazyType["ext.NpNDArray"]("numpy.ndarray").isinstance(item):
                 return torch.Tensor(item, device=self.device_id)
             if LazyType["ext.PdDataFrame"]("pandas.DataFrame").isinstance(item):
@@ -100,7 +104,10 @@ def make_pytorch_runnable_method(method_name: str) -> t.Callable[..., torch.Tens
 
         with inference_mode_ctx():
             params = params.map(_mapping)
-            return getattr(self.model, method_name)(*params.args, **params.kwargs)
+            return getattr(self.model, method_name)(
+                *params.args,
+                **dict(partial_kwargs, **params.kwargs),
+            )
 
     return _run
 

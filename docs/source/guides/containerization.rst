@@ -2,21 +2,23 @@
 Advanced Containerization
 =========================
 
-This guide describes advanced containerization options 
+*time expected: 12 minutes*
+
+This guide describes advanced containerization options
 provided by BentoML:
 
 - :ref:`Using base image <guides/containerization:Custom Base Image>`
 - :ref:`Using dockerfile template <guides/containerization:Dockerfile Template>`
 
 This is an advanced feature for user to customize container environment that are not directly supported in BentoML.
-For basic containerizing options, see :ref:`Docker Options <concepts/bento:Docker Options>`.
+For basic containerizing options, see :ref:`Docker Options <concepts/bento:Docker options>`.
 
 Why you may need this?
 ----------------------
 
 - If you want to customize the containerization process of your Bento.
 - If you need a certain tools, configs, prebuilt binaries that is available across all your Bento generated container images.
-- A big difference with :ref:`base image <concepts/bento:Docker Options Table>` features is that you don't have to setup a custom base image and then push it to a remote registry.
+- A big difference with :ref:`base image <concepts/bento:Docker options table>` features is that you don't have to setup a custom base image and then push it to a remote registry.
 
 Custom Base Image
 -----------------
@@ -61,11 +63,11 @@ will build a new image on top of the base_image with the following steps:
     only be used for building linux/amd64 platform docker images.
 
     If you are running BentoML from an Apple M1 device or an ARM based computer, make
-    sure to pass the :code:`--platform` parameter when containerizing a Bento. e.g.:
+    sure to pass the :code:`--opt platform=linux/amd64` parameter when containerizing a Bento. e.g.:
 
     .. code:: bash
 
-        bentoml containerize iris_classifier:latest --platform=linux/amd64
+        bentoml containerize iris_classifier:latest --opt platform=linux/amd64
 
 
 Dockerfile Template
@@ -129,34 +131,9 @@ Let's start with an example that builds a `custom TensorFlow op <https://www.ten
 
 Define the following :code:`Dockerfile.template`:
 
-.. code-block:: jinja
-
-   {% extends bento_base_template %}
-   {% block SETUP_BENTO_BASE_IMAGE %}
-
-   {{ super() }}
-
-   WORKDIR /tmp
-
-   SHELL [ "bash", "-exo", "pipefail", "-c" ]
-
-   COPY ./src/tfops/zero_out.cc .
-
-   RUN pip3 install tensorflow
-   RUN bash <<EOF
-   set -ex
-
-   TF_CFLAGS=( $(python3 -c 'import tensorflow as tf; print(" ".join(tf.sysconfig.get_compile_flags()))') )
-   TF_LFLAGS=( $(python3 -c 'import tensorflow as tf; print(" ".join(tf.sysconfig.get_link_flags()))') )
-
-   g++ --std=c++14 -shared zero_out.cc -o zero_out.so -fPIC ${TF_CFLAGS[@]} ${TF_LFLAGS[@]} -I$(python -c 'import tensorflow as tf; print(tf.sysconfig.get_include());') -D_GLIBCXX_USE_CXX11_ABI=0 -O2
-   EOF
-
-   {% endblock %}
-   {% block SETUP_BENTO_COMPONENTS %}
-   {{ super() }}
-   RUN stat /usr/lib/zero_out.so
-   {% endblock %}
+.. literalinclude:: ./snippets/containerization/tf_ops.template
+   :language: jinja
+   :caption: `Dockerfile.template`
 
 
 Then add the following to your :code:`bentofile.yaml`:
@@ -179,7 +156,7 @@ Proceed to build your Bento with :code:`bentoml build` and containerize with :co
 
    bentoml containerize <bento>:<tag>
 
-.. tip:: 
+.. tip::
 
    You can also provide :code:`--progress plain` to see the progress from
    `buildkit <https://github.com/moby/buildkit>`_ in plain text
@@ -198,7 +175,7 @@ We will now demonstrate how to provide AWS credentials to a Bento via two approa
 
 .. note::
 
-   :bdg-info:`Remarks:` We recommend for most cases 
+   :bdg-info:`Remarks:` We recommend for most cases
    to use the second option (:ref:`guides/containerization:Mount credentials from host`)
    as it prevents any securities leak.
 
@@ -231,6 +208,9 @@ Define the following :code:`Dockerfile.template`:
 
    ARG AWS_SECRET_ACCESS_KEY
    ARG AWS_ACCESS_KEY_ID
+
+   ENV AWS_SECRET_ACCESS_KEY=$ARG AWS_SECRET_ACCESS_KEY
+   ENV AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
    {% endblock %}
    {% block SETUP_BENTO_COMPONENTS %}
    {{ super() }}
@@ -258,7 +238,7 @@ Define the following :code:`Dockerfile.template`:
    {% extends bento_base_template %}
    {% block SETUP_BENTO_COMPONENTS %}
    {{ super() }}
-   
+
    RUN --mount=type=secret,id=aws,target=/root/.aws/credentials \
         aws s3 cp s3://path/to/file {{ bento__path }}
 
@@ -286,7 +266,7 @@ structure a :code:`Dockerfile.template`.
 
 The Dockerfile template is a mix between :code:`Jinja2` syntax and :code:`Dockerfile`
 syntax. BentoML set both `trim_blocks` and `lstrip_blocks` in Jinja
-templates environment to :code:`True`. 
+templates environment to :code:`True`.
 
 .. note::
 
@@ -357,14 +337,14 @@ To construct a custom :code:`Dockerfile` template, users have to provide an `ext
 
    This is an expected behaviour from Jinja2, where Jinja2 accepts **any file** as a template.
 
-   We decided not to put any restrictions to validate the template file, simply because we want to enable 
-   users to customize to their own needs. 
+   We decided not to put any restrictions to validate the template file, simply because we want to enable
+   users to customize to their own needs.
 
 :code:`{{ super() }}`
 ^^^^^^^^^^^^^^^^^^^^^
 
 As you can notice throughout this guides, we use a special function :code:`{{ super() }}`. This is a Jinja
-features that allow users to call content of `parent block <https://jinja.palletsprojects.com/en/3.1.x/templates/#super-blocks>`_. This 
+features that allow users to call content of `parent block <https://jinja.palletsprojects.com/en/3.1.x/templates/#super-blocks>`_. This
 enables users to fully extend base templates provided by BentoML to ensure that
 the result Bentos can be containerized.
 
@@ -469,9 +449,9 @@ By default, a Bento sets:
 
     ENTRYPOINT [ "{{ bento__entrypoint }}" ]
 
-    CMD ["bentoml", "serve", "{{ bento__path }}", "--production"]
+    CMD ["bentoml", "serve", "{{ bento__path }}"]
 
-This aboved instructions ensure that whenever :code:`docker run` is invoked on the 🍱 container, :code:`bentoml` is called correctly. 
+This aboved instructions ensure that whenever :code:`docker run` is invoked on the 🍱 container, :code:`bentoml` is called correctly.
 
 In scenarios where one needs to setup a custom :code:`ENTRYPOINT`, make sure to use
 the :code:`ENTRYPOINT` instruction under the :code:`SETUP_BENTO_ENTRYPOINT` block as follows:
@@ -534,96 +514,162 @@ If you need to use conda for CUDA images, use the following template ( *partiall
    :class-title: sd-text-primary
    :icon: code
 
-   .. code-block:: jinja
+   .. literalinclude:: ./snippets/containerization/conda_cuda.template
+      :language: jinja
+      :caption: `Dockerfile.template`
 
-      {% import '_macros.j2' as common %}
-      {% extends bento_base_template %}
-      {# Make sure to change the correct python_version and conda version accordingly. #}
-      {# example: py38_4.10.3 #}
-      {# refers to https://repo.anaconda.com/miniconda/ for miniconda3 base #}
-      {% set conda_version="py39_4.11.0" %}
-      {% set conda_path="/opt/conda" %}
-      {% set conda_exec=[conda_path, "bin", "conda"] | join("/") %}
-      {% block SETUP_BENTO_BASE_IMAGE %}
-      FROM debian:bullseye-slim as conda-build
+Containerization with different container engines
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-      RUN --mount=type=cache,target=/var/cache/apt \
-          --mount=type=cache,target=/var/lib/apt \
-          apt-get update -y && \
-          apt-get install -y --no-install-recommends --allow-remove-essential \
-                      software-properties-common \
-              bzip2 \
-              ca-certificates \
-              git \
-              libglib2.0-0 \
-              libsm6 \
-              libxext6 \
-              libxrender1 \
-              mercurial \
-              openssh-client \
-              procps \
-              subversion \
-              wget && \
-          apt-get clean
+In BentoML version 1.0.11 [#pr_3164]_, we support different container engines aside from docker.
 
-      ENV PATH {{ conda_path }}/bin:$PATH
+BentoML-generated Dockerfiles from version 1.0.11 onward will be OCI-compliant and can be built with:
 
-      SHELL [ "/bin/bash", "-eo", "pipefail", "-c" ]
+* `Docker <https://www.docker.com/>`_
+* `Podman <https://podman.io/>`_
+* `Buildah <https://buildah.io/>`_
+* `nerdctl <https://github.com/containerd/nerdctl>`_
+* :github:`buildctl <moby/buildkit/blob/master/docs/buildctl.md>`
+* `Docker buildx <https://docs.docker.com/engine/reference/commandline/buildx/>`_
 
-      ARG CONDA_VERSION={{ conda_version }}
+To use any of the aforementioned backends, they must be installed on your system. Refer to their documentation for installation and setup.
 
-      RUN bash <<EOF
-      set -ex
+.. note::
 
-      UNAME_M=$(uname -m)
+   By default, BentoML will use Docker as the container backend.
+   To use other container engines, please set the environment variable ``BENTOML_CONTAINERIZE_BACKEND`` or
+   pass in ``--backend`` to :ref:`bentoml containerize <reference/cli:containerize>`:
 
-      if [ "${UNAME_M}" = "x86_64" ]; then
-          MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-${CONDA_VERSION}-Linux-x86_64.sh";
-          SHA256SUM="4ee9c3aa53329cd7a63b49877c0babb49b19b7e5af29807b793a76bdb1d362b4";
-      elif [ "${UNAME_M}" = "s390x" ]; then
-          MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-${CONDA_VERSION}-Linux-s390x.sh";
-          SHA256SUM="e5e5e89cdcef9332fe632cd25d318cf71f681eef029a24495c713b18e66a8018";
-      elif [ "${UNAME_M}" = "aarch64" ]; then
-          MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-${CONDA_VERSION}-Linux-aarch64.sh";
-          SHA256SUM="00c7127a8a8d3f4b9c2ab3391c661239d5b9a88eafe895fd0f3f2a8d9c0f4556";
-      elif [ "${UNAME_M}" = "ppc64le" ]; then
-          MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-${CONDA_VERSION}-Linux-ppc64le.sh";
-          SHA256SUM="8ee1f8d17ef7c8cb08a85f7d858b1cb55866c06fcf7545b98c3b82e4d0277e66";
-      fi
+   .. code-block:: bash
 
-      wget "${MINICONDA_URL}" -O miniconda.sh -q && echo "${SHA256SUM} miniconda.sh" > shasum
+      # set environment variable
+      BENTOML_CONTAINERIZE_BACKEND=buildah bentoml containerize pytorch-mnist
 
-      if [ "${CONDA_VERSION}" != "latest" ]; then 
-          sha256sum --check --status shasum; 
-      fi
+      # or pass in --backend
+      bentoml containerize pytorch-mnist:latest --backend buildah
 
-      mkdir -p /opt
-      sh miniconda.sh -b -p {{ conda_path }} && rm miniconda.sh shasum
+To build a BentoContainer in Python, you can use the :ref:`Container SDK <reference/container:Container APIs>` method :meth:`bentoml.container.build`:
 
-      find {{ conda_path }}/ -follow -type f -name '*.a' -delete
-      find {{ conda_path }}/ -follow -type f -name '*.js.map' -delete
-      {{ conda_exec }} clean -afy
-      EOF
+.. code-block:: python
 
-      {{ super() }}
+   import bentoml
 
-      ENV PATH {{ conda_path }}/bin:$PATH
+   bentoml.container.build(
+      "pytorch-mnist:latest",
+      backend="podman",
+      features=["grpc","grpc-reflection"],
+      cache_from="registry.com/my_cache:v1",
+   )
 
-      COPY --from=conda-build {{ conda_path }} {{ conda_path }}
 
-      RUN bash <<EOF
-      ln -s {{ conda_path }}/etc/profile.d/conda.sh /etc/profile.d/conda.sh
-      echo ". {{ conda_path }}/etc/profile.d/conda.sh" >> ~/.bashrc
-      echo "{{ conda_exec }} activate base" >> ~/.bashrc
-      EOF
+Register custom backend
+^^^^^^^^^^^^^^^^^^^^^^^
 
-      {% endblock %}
-      {% block SETUP_BENTO_ENVARS %}
+To register a new backend, there are two functions that need to be implemented:
 
-      SHELL [ "/bin/bash", "-eo", "pipefail", "-c" ]
-      {{ super() }}
-      {{ common.setup_conda(__python_version__, bento__path, conda_path=conda_path) }}
-      {% endblock %}
+* ``arg_parser_func``: a function that takes in keyword arguments that represents the builder
+  commandline arguments and returns a ``list[str]``:
+
+  .. code-block:: python
+
+     def arg_parser_func(
+         *,
+         context_path: str = ".",
+         cache_from: Optional[str] = None,
+         **kwargs,
+     ) -> list[str]:
+         if cache_from:
+             args.extend(["--cache-from", cache_from])
+         args.append(context_path)
+         return args
+
+* ``health_func``: a function that returns a ``bool`` to indicate if the backend is available:
+
+  .. code-block:: python
+
+     import shutil
+
+     def health_func() -> bool:
+         return shutil.which("limactl") is not None
+
+To register a new backend, use :meth:`bentoml.container.register_backend`:
+
+.. code-block:: python
+
+   from bentoml.container import register_backend
+
+   register_backend(
+      "lima",
+      binary="/usr/bin/limactl",
+      buildkit_support=True,
+      health=health_func,
+      construct_build_args=arg_parser_func,
+      env={"DOCKER_BUILDKIT": "1"},
+   )
+
+.. dropdown:: Backward compatibility with ``bentoml.bentos.containerize``
+   :class-title: sd-text-primary
+
+   Before 1.0.11, BentoML uses :meth:`bentoml.bentos.containerize` to containerize Bento. This method is now deprecated and will be removed in the future.
+
+BuildKit interop
+^^^^^^^^^^^^^^^^
+
+BentoML leverages `BuildKit <https://github.com/moby/buildkit>`_ for a more extensive feature set. However, we recognise that
+BuildKit has come with a lot of friction for migration purposes as well as restrictions to use with other build tools (such as podman, buildah, kaniko).
+
+Therefore, since BentoML version 1.0.11, BuildKit will be an opt-out. To disable BuildKit, pass ``DOCKER_BUILDKIT=0`` to
+:ref:`bentoml containerize <reference/cli:containerize>`, which aligns with the behaviour of ``docker build``:
+
+.. code-block:: bash
+
+    $ DOCKER_BUILDKIT=0 bentoml containerize ...
+
+.. note::
+
+    All Bento container will now be following OCI spec instead of Docker spec. The difference is that in OCI spec, there is no SHELL argument.
+
+.. note::
+
+   The generated Dockerfile included inside the Bento will be a minimal Dockerfile, which ensures compatibility among build tools. We encourage users to always use
+   :ref:`bentoml containerize <reference/cli:containerize>`.
+
+   *If you wish to use the generated Dockerfile, make sure that you know what you are doing!*
+
+CLI enhancement
+^^^^^^^^^^^^^^^
+
+To better support different backends, :ref:`bentoml containerize <reference/cli:containerize>`
+will be more agnostic when it comes to parsing options.
+
+One can pass in options for specific backend with ``--opt``:
+
+.. code-block:: bash
+
+   $ bentoml containerize pytorch-mnist:latest --backend buildx --opt platform=linux/arm64
+
+``--opt`` also accepts parsing ``:``
+
+.. code-block:: bash
+
+   $ bentoml containerize pytorch-mnist:latest --backend buildx --opt platform:linux/arm64
+
+.. note::
+
+   If you are seeing a warning message like:
+
+   .. code-block:: prolog
+
+       '--platform=linux/arm64' is now deprecated, use the equivalent '--opt platform=linux/arm64' instead.
+
+   BentoML used to depends on Docker buildx. These options are now backward compatible with ``--opt``. You can safely ignore this warning and use
+   ``--opt`` to pass options for ``--backend=buildx``.
+
+----
+
+.. rubric:: Notes
+
+.. [#pr_3164] Introduction of container builder to build Bento into OCI-compliant image: :github:`bentoml/BentoML/pull/3164`
 
 .. _conda_docker: https://github.com/ContinuumIO/docker-images/blob/master/miniconda3/debian/Dockerfile
 

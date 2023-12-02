@@ -1,21 +1,23 @@
 from __future__ import annotations
 
+import time
 import typing as t
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel
 from context_server_interceptor import AsyncContextInterceptor
+from pydantic import BaseModel
 
 import bentoml
-from bentoml.io import File
+from bentoml._internal.utils import LazyLoader
+from bentoml._internal.utils.metrics import exponential_buckets
 from bentoml.io import JSON
-from bentoml.io import Text
+from bentoml.io import File
 from bentoml.io import Image
 from bentoml.io import Multipart
 from bentoml.io import NumpyNdarray
 from bentoml.io import PandasDataFrame
-from bentoml.testing.grpc import TestServiceServicer
-from bentoml._internal.utils import LazyLoader
+from bentoml.io import PandasSeries
+from bentoml.io import Text
 
 if TYPE_CHECKING:
     import numpy as np
@@ -23,12 +25,10 @@ if TYPE_CHECKING:
     import PIL.Image
     from numpy.typing import NDArray
 
-    from bentoml.grpc.v1alpha1 import service_test_pb2 as pb_test
-    from bentoml.grpc.v1alpha1 import service_test_pb2_grpc as services_test
+    from bentoml._internal.runner.runner import RunnerMethod
     from bentoml._internal.types import FileLike
     from bentoml._internal.types import JSONSerializable
     from bentoml.picklable_model import get_runnable
-    from bentoml._internal.runner.runner import RunnerMethod
 
     RunnableImpl = get_runnable(bentoml.picklable_model.get("py_model.case-1.grpc.e2e"))
 
@@ -50,9 +50,6 @@ if TYPE_CHECKING:
         echo_dataframe: RunnerMethod[RunnableImpl, [pd.DataFrame], pd.DataFrame]
 
 else:
-    from bentoml.grpc.utils import import_generated_stubs
-
-    pb_test, services_test = import_generated_stubs(file="service_test.proto")
     np = LazyLoader("np", globals(), "numpy")
     pd = LazyLoader("pd", globals(), "pandas")
     PIL = LazyLoader("PIL", globals(), "PIL")
@@ -66,11 +63,6 @@ py_model = t.cast(
 
 svc = bentoml.Service(name="general_grpc_service.case-1.e2e", runners=[py_model])
 
-svc.mount_grpc_servicer(
-    TestServiceServicer,
-    add_servicer_fn=services_test.add_TestServiceServicer_to_server,
-    service_names=[v.full_name for v in pb_test.DESCRIPTOR.services_by_name.values()],
-)
 svc.add_grpc_interceptor(AsyncContextInterceptor, usage="NLP", accuracy_score=0.8247)
 
 
@@ -149,6 +141,12 @@ async def echo_dataframe_from_sample(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+@svc.api(input=PandasSeries.from_sample(pd.Series([1, 2, 3])), output=PandasSeries())
+async def echo_series_from_sample(series: pd.Series) -> pd.Series:
+    assert isinstance(series, pd.Series)
+    return series
+
+
 @svc.api(
     input=PandasDataFrame(dtype={"col1": "int64"}, orient="columns"),
     output=PandasDataFrame(),
@@ -173,6 +171,14 @@ async def echo_image(f: PIL.Image.Image) -> NDArray[t.Any]:
     return np.array(f)
 
 
+histogram = bentoml.metrics.Histogram(
+    name="inference_latency",
+    documentation="Inference latency in seconds",
+    labelnames=["model_name", "model_version"],
+    buckets=exponential_buckets(0.001, 1.5, 10.0),
+)
+
+
 @svc.api(
     input=Multipart(
         original=Image(mime_type="image/bmp"), compared=Image(mime_type="image/bmp")
@@ -180,8 +186,22 @@ async def echo_image(f: PIL.Image.Image) -> NDArray[t.Any]:
     output=Multipart(meta=Text(), result=Image(mime_type="image/bmp")),
 )
 async def predict_multi_images(original: Image, compared: Image):
+    start = time.perf_counter()
     output_array = await py_model.multiply_float_ndarray.async_run(
         np.array(original), np.array(compared)
     )
+    histogram.labels(model_name=py_model.name, model_version="v1").observe(
+        time.perf_counter() - start
+    )
     img = PIL.Image.fromarray(output_array)
     return {"meta": "success", "result": img}
+
+
+@svc.api(input=bentoml.io.Text(), output=bentoml.io.Text())
+def ensure_metrics_are_registered(_: str) -> None:
+    histograms = [
+        m.name
+        for m in bentoml.metrics.text_string_to_metric_families()
+        if m.type == "histogram"
+    ]
+    assert "inference_latency" in histograms

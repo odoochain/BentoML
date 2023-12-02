@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import typing as t
 import logging
 import logging.config
+import typing as t
 from functools import lru_cache
 
-from .context import trace_context
-from .context import component_context
 from .configuration import get_debug_mode
 from .configuration import get_quiet_mode
+from .context import component_context
+from .context import trace_context
 
 default_factory = logging.getLogRecordFactory()
 
@@ -87,6 +87,7 @@ def configure_logging():
         CLI_LOGGING_CONFIG["loggers"]["bentoml"]["level"] = logging.ERROR
         CLI_LOGGING_CONFIG["root"]["level"] = logging.ERROR
     elif get_debug_mode():
+        CLI_LOGGING_CONFIG["handlers"]["defaulthandler"]["level"] = logging.DEBUG
         CLI_LOGGING_CONFIG["loggers"]["bentoml"]["level"] = logging.DEBUG
         CLI_LOGGING_CONFIG["root"]["level"] = logging.DEBUG
     else:
@@ -110,11 +111,13 @@ def _component_name():
 
 def trace_record_factory(*args: t.Any, **kwargs: t.Any):
     record = default_factory(*args, **kwargs)
-    record.levelname_bracketed = f"[{record.levelname}]"  # type: ignore (adding fields to record)
-    record.component = f"[{_component_name()}]"  # type: ignore (adding fields to record)
+    if record.name in ("bentoml_monitor_data", "bentoml_monitor_schema"):
+        return record
+    record.levelname_bracketed = f"[{record.levelname}]"
+    record.component = f"[{_component_name()}]"
     trace_id = trace_context.trace_id
     if trace_id in (0, None):
-        record.trace_msg = ""  # type: ignore (adding fields to record)
+        record.trace_msg = ""
     else:
         from .configuration.containers import BentoMLContainer
 
@@ -124,8 +127,9 @@ def trace_record_factory(*args: t.Any, **kwargs: t.Any):
 
         trace_id = format(trace_id, trace_id_format)
         span_id = format(trace_context.span_id, span_id_format)
-        record.trace_msg = f" (trace={trace_id},span={span_id},sampled={trace_context.sampled})"  # type: ignore (adding fields to record)
-    record.request_id = trace_context.request_id  # type: ignore (adding fields to record)
+        record.trace_msg = f" (trace={trace_id},span={span_id},sampled={trace_context.sampled},service.name={trace_context.service_name})"
+    record.request_id = trace_context.request_id
+    record.service_name = trace_context.service_name
 
     return record
 
@@ -140,6 +144,5 @@ def configure_server_logging():
     else:
         SERVER_LOGGING_CONFIG["loggers"]["bentoml"]["level"] = logging.INFO
         SERVER_LOGGING_CONFIG["root"]["level"] = logging.WARNING
-
     logging.setLogRecordFactory(trace_record_factory)
     logging.config.dictConfig(SERVER_LOGGING_CONFIG)

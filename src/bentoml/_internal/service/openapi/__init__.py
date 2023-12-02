@@ -1,29 +1,30 @@
 from __future__ import annotations
 
 import typing as t
+from functools import lru_cache
 from http import HTTPStatus
 from typing import TYPE_CHECKING
-from functools import lru_cache
 
 from deepmerge.merger import Merger
 
-from bentoml.exceptions import NotFound
-from bentoml.exceptions import InvalidArgument
 from bentoml.exceptions import InternalServerError
+from bentoml.exceptions import InvalidArgument
+from bentoml.exceptions import NotFound
 
-from .utils import REF_PREFIX
-from .utils import exception_schema
-from .utils import exception_components_schema
-from .specification import Tag
-from .specification import Info
+from ...types import LazyType
+from ...utils import bentoml_cattr
 from .specification import Contact
-from .specification import PathItem
-from .specification import Response
+from .specification import Info
 from .specification import MediaType
-from .specification import Operation
-from .specification import Reference
-from .specification import Components
 from .specification import OpenAPISpecification
+from .specification import Operation
+from .specification import PathItem
+from .specification import Reference
+from .specification import Response
+from .specification import Tag
+from .utils import REF_PREFIX
+from .utils import exception_components_schema
+from .utils import exception_schema
 
 if TYPE_CHECKING:
     from .. import Service
@@ -58,7 +59,7 @@ merger = Merger(
 )
 
 
-def make_api_path(api: InferenceAPI) -> str:
+def make_api_path(api: InferenceAPI[t.Any]) -> str:
     return api.route if api.route.startswith("/") else f"/{api.route}"
 
 
@@ -76,7 +77,7 @@ def make_infra_endpoints() -> dict[str, PathItem]:
     }
 
 
-def generate_service_components(svc: Service) -> Components:
+def generate_service_components(svc: Service) -> dict[str, t.Any]:
     components: dict[str, t.Any] = {}
     for api in svc.apis.values():
         api_components = {}
@@ -90,32 +91,55 @@ def generate_service_components(svc: Service) -> Components:
         merger.merge(components, api_components)
 
     # merge exception at last
-    merger.merge(components, {"schemas": exception_components_schema()})
-
-    return Components(**components)
+    return merger.merge(components, {"schemas": exception_components_schema()})
 
 
 def generate_spec(svc: Service, *, openapi_version: str = "3.0.2"):
     """Generate a OpenAPI specification for a service."""
+    mounted_app_paths = {}
+    schema_components = {}
+
+    for app, _, _ in svc.mount_apps:
+        if LazyType["fastapi.FastAPI"]("fastapi.FastAPI").isinstance(app):
+            from fastapi.openapi.utils import get_openapi
+
+            openapi = get_openapi(
+                title=app.title,
+                version=app.version,
+                routes=app.routes,
+            )
+
+            mounted_app_paths.update(
+                {
+                    k: bentoml_cattr.structure(v, PathItem)
+                    for k, v in openapi["paths"].items()
+                }
+            )
+
+            if "components" in openapi:
+                merger.merge(schema_components, openapi["components"])
+
+    merger.merge(schema_components, generate_service_components(svc))
+
     return OpenAPISpecification(
         openapi=openapi_version,
         tags=[APP_TAG, INFRA_TAG],
-        components=generate_service_components(svc),
+        components=schema_components,
         info=Info(
             title=svc.name,
-            summary="A ML Service created with BentoML",
             description=svc.doc,
             version=svc.tag.version if svc.tag and svc.tag.version else "None",
-            contact=Contact(name="BentoML Team", email="contact@bentoml.ai"),
+            contact=Contact(name="BentoML Team", email="contact@bentoml.com"),
         ),
+        servers=[{"url": "."}],
         paths={
             # setup infra endpoints
             **make_infra_endpoints(),
             # setup inference endpoints
             **{
                 make_api_path(api): PathItem(
-                    post=Operation(
-                        responses={
+                    post={
+                        "responses": {
                             HTTPStatus.OK.value: api.output.openapi_responses(),
                             **{
                                 ex.error_code.value: Response(
@@ -136,14 +160,18 @@ def generate_spec(svc: Service, *, openapi_version: str = "3.0.2"):
                                 for filled in exception_schema(ex)
                             },
                         },
-                        tags=[APP_TAG.name],
-                        summary=f"{api}",
-                        description=api.doc or "",
-                        requestBody=api.input.openapi_request_body(),
-                        operationId=f"{svc.name}__{api.name}",
-                    )
+                        "tags": [APP_TAG.name],
+                        "consumes": [api.input.mime_type],
+                        "produces": [api.output.mime_type],
+                        "x-bentoml-name": api.name,
+                        "summary": str(api),
+                        "description": api.doc or "",
+                        "requestBody": api.input.openapi_request_body(),
+                        "operationId": f"{svc.name}__{api.name}",
+                    },
                 )
                 for api in svc.apis.values()
             },
+            **mounted_app_paths,
         },
     )

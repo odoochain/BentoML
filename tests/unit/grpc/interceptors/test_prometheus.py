@@ -1,35 +1,33 @@
 from __future__ import annotations
 
 import sys
-import typing as t
 import tempfile
-from typing import TYPE_CHECKING
+import typing as t
 from asyncio import Future
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import pytest
 
-from bentoml.testing.grpc import create_channel
-from bentoml.testing.grpc import async_client_call
-from bentoml.testing.grpc import create_bento_servicer
-from bentoml.testing.grpc import make_standalone_server
-from bentoml.grpc.interceptors.prometheus import PrometheusServerInterceptor
 from bentoml._internal.configuration.containers import BentoMLContainer
+from bentoml._internal.utils import LazyLoader
+from bentoml.grpc.interceptors.prometheus import PrometheusServerInterceptor
+from bentoml.grpc.utils import import_generated_stubs
+from bentoml.grpc.utils import import_grpc
+from bentoml.testing.grpc import async_client_call
+from bentoml.testing.grpc import create_channel
+from bentoml.testing.grpc import create_test_bento_servicer
+from bentoml.testing.grpc import make_standalone_server
+from tests.proto import service_test_pb2 as pb_test
+from tests.proto import service_test_pb2_grpc as services_test
+from tests.unit.grpc.conftest import TestServiceServicer
 
 if TYPE_CHECKING:
     import grpc
     from google.protobuf import wrappers_pb2
 
     from bentoml import Service
-    from bentoml.grpc.v1alpha1 import service_pb2_grpc as services
-    from bentoml.grpc.v1alpha1 import service_test_pb2 as pb_test
 else:
-    from bentoml.grpc.utils import import_grpc
-    from bentoml.grpc.utils import import_generated_stubs
-    from bentoml._internal.utils import LazyLoader
-
-    _, services = import_generated_stubs()
-    pb_test, _ = import_generated_stubs(file="service_test.proto")
     wrappers_pb2 = LazyLoader("wrappers_pb2", globals(), "google.protobuf.wrappers_pb2")
     grpc, aio = import_grpc()
 
@@ -70,10 +68,13 @@ async def test_empty_metrics():
         host_url,
     ):
         try:
+            services_test.add_TestServiceServicer_to_server(
+                TestServiceServicer(), server
+            )
             await server.start()
             async with create_channel(host_url) as channel:
                 Execute = channel.unary_unary(
-                    "/bentoml.testing.v1alpha1.TestService/Execute",
+                    "/tests.proto.TestService/Execute",
                     request_serializer=pb_test.ExecuteRequest.SerializeToString,
                     response_deserializer=pb_test.ExecuteResponse.FromString,
                 )
@@ -102,19 +103,23 @@ async def test_empty_metrics():
         ("gauge", ["api_name", "service_version", "service_name"]),
     ],
 )
+@pytest.mark.parametrize("protocol_version", ["v1", "v1alpha1"])
 async def test_metrics_interceptors(
     simple_service: Service,
     metric_type: str,
     parent_set: list[str],
+    protocol_version: str,
 ):
     metrics_client = BentoMLContainer.metrics_client.get()
+
+    _, services = import_generated_stubs(protocol_version)
 
     with make_standalone_server(interceptors=[interceptor]) as (
         server,
         host_url,
     ):
         services.add_BentoServiceServicer_to_server(
-            create_bento_servicer(simple_service), server
+            create_test_bento_servicer(simple_service, protocol_version), server
         )
         try:
             await server.start()
@@ -123,6 +128,7 @@ async def test_metrics_interceptors(
                     "noop_sync",
                     channel=channel,
                     data={"text": wrappers_pb2.StringValue(value="BentoML")},
+                    protocol_version=protocol_version,
                 )
             for m in metrics_client.text_string_to_metric_families():
                 for sample in m.samples:

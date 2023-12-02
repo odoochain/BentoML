@@ -5,23 +5,24 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from bentoml._internal.utils import LazyLoader
+from bentoml.exceptions import InvalidArgument
+from bentoml.grpc.utils import import_generated_stubs
 from bentoml.io import JSON
 from bentoml.io import Image
 from bentoml.io import Multipart
-from bentoml.exceptions import InvalidArgument
+from bentoml.io import Text
 
 example = Multipart(arg1=JSON(), arg2=Image(mime_type="image/bmp", pilmode="RGB"))
+example2 = Multipart(arg1=Image(), arg2=Text(content_type="text/event-stream"))
 
 if TYPE_CHECKING:
     import PIL.Image as PILImage
     from google.protobuf import struct_pb2
     from google.protobuf import wrappers_pb2
 
-    from bentoml.grpc.v1alpha1 import service_pb2 as pb
+    from bentoml.grpc.v1 import service_pb2 as pb
 else:
-    from bentoml.grpc.utils import import_generated_stubs
-    from bentoml._internal.utils import LazyLoader
-
     pb, _ = import_generated_stubs()
     np = LazyLoader("np", globals(), "numpy")
     PILImage = LazyLoader("PILImage", globals(), "PIL.Image")
@@ -47,11 +48,11 @@ def test_multipart_openapi_schema():
 
 def test_multipart_openapi_request_responses():
     request_body = example.openapi_request_body()
-    assert request_body.required
+    assert request_body["required"]
 
     responses = example.openapi_responses()
 
-    assert responses.content
+    assert responses["content"]
 
 
 @pytest.mark.asyncio
@@ -86,7 +87,7 @@ async def test_multipart_from_to_proto(img_file: str):
                         )
                     )
                 ),
-                "arg2": pb.Part(file=pb.File(kind=pb.File.FILE_TYPE_BMP, content=img)),
+                "arg2": pb.Part(file=pb.File(kind="image/bmp", content=img)),
             }
         )
     )
@@ -99,3 +100,14 @@ async def test_multipart_from_to_proto(img_file: str):
     )
     assert isinstance(message, pb.Multipart)
     assert message.fields["arg1"].json.struct_value.fields["asd"].string_value == "asd"
+
+
+@pytest.mark.asyncio
+async def test_multipart_to_http_response(img_file: str):
+    try:
+        res = await example2.to_http_response(
+            {"arg1": PILImage.open(img_file), "arg2": "test prompt"}
+        )
+        assert res
+    except Exception as e:
+        pytest.fail(f"Unexpected exception: {e}")

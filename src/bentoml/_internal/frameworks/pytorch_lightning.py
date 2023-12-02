@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 import bentoml
 from bentoml import Tag
 
-from .torchscript import save_model as script_save_model
-from .torchscript import MODEL_FILENAME
-from ...exceptions import NotFound
 from ...exceptions import MissingDependencyException
+from ...exceptions import NotFound
 from ..models.model import Model
 from .common.pytorch import torch
+from .torchscript import MODEL_FILENAME
+from .torchscript import save_model as script_save_model
 
 if TYPE_CHECKING:
     from ..models.model import ModelSignaturesType
@@ -21,9 +21,7 @@ try:
     import pytorch_lightning as pl
 except ImportError:  # pragma: no cover
     raise MissingDependencyException(
-        "`pytorch_lightning` is required in order to use module "
-        "`bentoml.pytorch_lightning`, install python-lightning with: "
-        "`pip install pytorch-lightning`"
+        "'pytorch_lightning' is required in order to use module 'bentoml.pytorch_lightning', install python-lightning with: 'pip install pytorch-lightning'"
     )
 
 MODULE_NAME = "bentoml.pytorch_lightning"
@@ -52,7 +50,7 @@ def load_model(
         tag (:code:`Union[str, Tag]`):
             Tag of a saved model in BentoML local modelstore.
         device_id (:code:`str`, `optional`):
-            Optional devices to put the given model on. Refers to https://pytorch.org/docs/stable/tensor_attributes.html#torch.torch.device
+            Optional devices to put the given model on. Refer to https://pytorch.org/docs/stable/tensor_attributes.html#torch.torch.device
         model_store (:mod:`~bentoml._internal.models.store.ModelStore`, default to :mod:`BentoMLContainer.model_store`):
             BentoML modelstore, provided by DI Container.
 
@@ -74,12 +72,12 @@ def load_model(
             f"Model {bentoml_model.tag} was saved with module {bentoml_model.info.module}, not loading with {MODULE_NAME}."
         )
     weight_file = bentoml_model.path_of(MODEL_FILENAME)
-    model: torch.ScriptModule = torch.jit.load(weight_file, map_location=device_id)  # type: ignore[reportPrivateImportUsage]
+    model: torch.ScriptModule = torch.jit.load(weight_file, map_location=device_id)
     return model
 
 
 def save_model(
-    name: str,
+    name: Tag | str,
     model: pl.LightningModule,
     *,
     signatures: ModelSignaturesType | None = None,
@@ -156,11 +154,11 @@ def save_model(
             def configure_optimizers(self):
                 return torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
 
-        tag = bentoml.pytorch_lightning.save("lit_classifier", LitClassifier())
+        tag = bentoml.pytorch_lightning.save_model("lit_classifier", LitClassifier())
     """
     if not isinstance(model, pl.LightningModule):
         raise TypeError(
-            f"`model` must be an instance of `pl.LightningModule`, got {type(model)}"
+            f"'model' must be an instance of 'pl.LightningModule', got {type(model)} instead."
         )
 
     script_module = model.to_torchscript()
@@ -186,9 +184,9 @@ def get_runnable(bento_model: Model):
     """
     Private API: use :obj:`~bentoml.Model.to_runnable` instead.
     """
-    from .common.pytorch import partial_class
     from .common.pytorch import PytorchModelRunnable
     from .common.pytorch import make_pytorch_runnable_method
+    from .common.pytorch import partial_class
 
     for method_name, options in bento_model.info.signatures.items():
         PytorchModelRunnable.add_method(

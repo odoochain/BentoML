@@ -75,7 +75,7 @@ Converting model frameworks to ONNX format
 		 init.orthogonal_(self.conv3.weight, init.calculate_gain('relu'))
 		 init.orthogonal_(self.conv4.weight)
 
-	 torch_model = SuperResolutionNet()
+	 torch_model = SuperResolutionNet(upscale_factor=3)
 
       For this tutorial, we will use pre-trained weights provided by the PyTorch team. Note that the model was only partially trained and being used for demonstration purposes.
 
@@ -220,7 +220,7 @@ Saving ONNX model with BentoML
 ------------------------------
 
 To quickly save any given ONNX model to BentoML's :ref:`Model
-Store<concepts/model:Managing Models>`, use ``onnx.load`` to
+Store <concepts/model:Manage models>`, use ``onnx.load`` to
 load the exported ONNX model back into the Python session,
 then call BentoML's :obj:`~bentoml.onnx.save_model()`:
 
@@ -285,7 +285,18 @@ This means by default, BentoML's :ref:`guides/batching:Adaptive Batching` is dis
 If you want to enable adaptive batching, provide a signature similar to the
 aboved example.
 
-Refers to :ref:`concepts/model:Model Signatures` and :ref:`Batching behaviour <concepts/model:Batching>` for more information.
+Refer to :ref:`concepts/model:Model signatures` and :ref:`Batching behaviour <concepts/model:Batching>` for more information.
+
+.. note::
+
+   BentoML internally uses |onnxruntime_inferencesession|_
+   to run inference. When the original model is converted to ONNX
+   format and loaded by ``onnxruntime.InferenceSession``, the
+   inference method of the original model is converted to the ``run``
+   method of the ``onnxruntime.InferenceSession``. ``signatures`` in
+   above codes refers to the predict method of
+   ``onnxruntime.InferenceSession``, hence the only allowed method
+   name in ``signatures`` is ``run``.
 
 
 Building a Service for **ONNX**
@@ -293,7 +304,7 @@ Building a Service for **ONNX**
 
 .. seealso::
 
-   :ref:`Building a Service <concepts/service:Service and APIs>` for how to
+   :ref:`Building a Service <concepts/service:Service APIs>` for how to
    create a prediction service with BentoML.
 
 .. tab-set::
@@ -382,12 +393,11 @@ Building a Service for **ONNX**
 
    In the aboved example, notice there are both ``run`` and ``async_run``  in ``runner.run.async_run(input_data)`` inside inference code. The distinction between ``run`` and ``async_run`` is as follow:
 
-   1.  The ``run`` refers  to `onnxruntime.InferenceSession <https://github.com/microsoft/onnxruntime/blob/master/onnxruntime/core/session/inference_session.cc>`_'s ``run`` method, which is ONNX Runtime API to run `inference <https://onnxruntime.ai/docs/api/python/api_summary.html#data-inputs-and-outputs>`_.
+   1.  The ``run`` refers  to |onnxruntime_inferencesession|_'s ``run`` method, which is the ONNX Runtime API to run `inference <https://onnxruntime.ai/docs/api/python/api_summary.html#data-inputs-and-outputs>`_.
    2. The ``async_run`` refers to BentoML's runner inference API for invoking a model's signature. In the case of ONNX, it happens to have a similar name like the ``InferenceSession`` endpoint.
 
 
-When constructing a :ref:`bentofile.yaml <concepts/bento:Bento Build
-Options>`, there are two ways to include ONNX as a dependency, via
+When constructing a :ref:`bentofile.yaml <concepts/bento:Bento build options>`, there are two ways to include ONNX as a dependency, via
 ``python`` (if using pip) or ``conda``:
 
 .. tab-set::
@@ -566,3 +576,7 @@ override the default setting using ``with_options`` when creating a runner:
 .. seealso::
 
    `Execution Providers' documentation <https://onnxruntime.ai/docs/execution-providers/>`_
+
+.. _onnxruntime_inferencesession: https://onnxruntime.ai/docs/api/python/api_summary.html#inferencesession
+
+.. |onnxruntime_inferencesession| replace:: ``onnxruntime.InferenceSession``

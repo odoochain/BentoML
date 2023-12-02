@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import typing as t
 import logging
+import typing as t
 from types import ModuleType
 from typing import TYPE_CHECKING
 
@@ -9,11 +9,11 @@ import numpy as np
 
 import bentoml
 from bentoml import Tag
-from bentoml.exceptions import NotFound
 from bentoml.exceptions import InvalidArgument
 from bentoml.exceptions import MissingDependencyException
-from bentoml._internal.models.model import ModelContext
+from bentoml.exceptions import NotFound
 
+from ..models.model import ModelContext
 from ..utils.pkg import get_pkg_version
 
 if TYPE_CHECKING:
@@ -23,12 +23,10 @@ if TYPE_CHECKING:
     from .. import external_typing as ext
 
 try:
-    import lightgbm as lgb  # type: ignore (missing type stubs for lightgbm)
+    import lightgbm as lgb
 except ImportError:  # pragma: no cover
     raise MissingDependencyException(
-        "lightgbm is required in order to use module `bentoml.lightgbm`, install "
-        "lightgbm with `pip install lightgbm`. For more information, refer to "
-        "https://github.com/microsoft/LightGBM/tree/master/python-package"
+        "lightgbm is required in order to use module 'bentoml.lightgbm', install lightgbm with 'pip install lightgbm'. For more information, refer to https://github.com/microsoft/LightGBM/tree/master/python-package"
     )
 
 MODULE_NAME = "bentoml.lightgbm"
@@ -96,7 +94,7 @@ def load_model(bento_model: str | Tag | bentoml.Model) -> lgb.basic.Booster:  # 
 
 
 def save_model(
-    name: str,
+    name: Tag | str,
     model: lgb.basic.Booster,  # type: ignore (incomplete ligthgbm type stubs)
     *,
     signatures: dict[str, ModelSignatureDict] | None = None,
@@ -177,7 +175,7 @@ def save_model(
 
         # save the booster to BentoML modelstore:
         bento_model = bentoml.lightgbm.save_model("my_lightgbm_model", gbm, booster_params=params)
-    """  # noqa: LN001
+    """
 
     # Ensure that `model` is actually the Booster object, and not for example one of the scikit-learn wrapper objects.
     if not isinstance(model, lgb.basic.Booster):  # type: ignore (incomplete ligthgbm type stubs)
@@ -189,9 +187,7 @@ def save_model(
 
             model = model.booster_  # type: ignore (incomplete ligthgbm type stubs)
         except AttributeError as e:
-            logger.error(
-                "Unable to obtain a lightgbm.basic.Booster from the specified model."
-            )
+            logger.error('Unable to obtain a "lightgbm.basic.Booster" from %s.', model)
             raise e
 
     if not isinstance(model, lgb.basic.Booster):  # type: ignore (incomplete ligthgbm type stubs)
@@ -203,12 +199,14 @@ def save_model(
     )
 
     if signatures is None:
-        logger.info(
-            'Using default model signature `{"predict": {"batchable": False}}` for LightGBM model'
-        )
         signatures = {
             "predict": {"batchable": False},
         }
+        logger.info(
+            'Using the default model signature for LightGBM (%s) for model "%s".',
+            signatures,
+            name,
+        )
 
     with bentoml.models.create(
         name,

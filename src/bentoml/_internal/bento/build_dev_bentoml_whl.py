@@ -1,21 +1,23 @@
 from __future__ import annotations
 
-import os
 import logging
+import os
 from pathlib import Path
 
-from ..utils.pkg import source_locations
 from ...exceptions import BentoMLException
 from ...exceptions import MissingDependencyException
+from ...grpc.utils import LATEST_PROTOCOL_VERSION
 from ..configuration import is_pypi_installed_bentoml
+from ..utils.pkg import source_locations
 
 logger = logging.getLogger(__name__)
 
 BENTOML_DEV_BUILD = "BENTOML_BUNDLE_LOCAL_BUILD"
-_exc_message = f"'{BENTOML_DEV_BUILD}=True', which requires the 'pypa/build' package. Install development dependencies with 'pip install -r requirements/dev-requirements.txt' and try again."
 
 
-def build_bentoml_editable_wheel(target_path: str) -> None:
+def build_bentoml_editable_wheel(
+    target_path: str, *, _internal_protocol_version: str = LATEST_PROTOCOL_VERSION
+) -> None:
     """
     This is for BentoML developers to create Bentos that contains the local bentoml
     build based on their development branch. To enable this behavior, one must
@@ -29,11 +31,12 @@ def build_bentoml_editable_wheel(target_path: str) -> None:
         return
 
     try:
-        from build.env import IsolatedEnvBuilder
-
         from build import ProjectBuilder
+        from build.env import IsolatedEnvBuilder
     except ModuleNotFoundError as e:
-        raise MissingDependencyException(_exc_message) from e
+        raise MissingDependencyException(
+            f"Environment variable '{BENTOML_DEV_BUILD}=True', which requires the 'pypa/build' package ({e}). Install it with 'pip install -U build' and try again."
+        ) from None
 
     # Find bentoml module path
     # This will be $GIT_ROOT/src/bentoml
@@ -42,13 +45,11 @@ def build_bentoml_editable_wheel(target_path: str) -> None:
         raise BentoMLException("Could not find bentoml module location.")
     bentoml_path = Path(module_location)
 
-    try:
-        from importlib import import_module
-
-        _ = import_module("bentoml.grpc.v1alpha1.service_pb2")
-    except ModuleNotFoundError:
+    if not Path(
+        module_location, "grpc", _internal_protocol_version, "service_pb2.py"
+    ).exists():
         raise ModuleNotFoundError(
-            f"Generated stubs are not found. Make sure to run '{bentoml_path.as_posix()}/scripts/generate_grpc_stubs.sh' beforehand to generate gRPC stubs."
+            f"Generated stubs for version {_internal_protocol_version} are missing. Make sure to run '{bentoml_path.as_posix()}/scripts/generate_grpc_stubs.sh {_internal_protocol_version}' beforehand to generate gRPC stubs."
         ) from None
 
     # location to pyproject.toml
@@ -58,7 +59,7 @@ def build_bentoml_editable_wheel(target_path: str) -> None:
     # branches of BentoML library, it is True only when BentoML module is installed
     # in development mode via "pip install --editable ."
     if os.path.isfile(pyproject):
-        logger.info(
+        logger.debug(
             "BentoML is installed in `editable` mode; building BentoML distribution with the local BentoML code base. The built wheel file will be included in the target bento."
         )
         with IsolatedEnvBuilder() as env:
@@ -66,8 +67,10 @@ def build_bentoml_editable_wheel(target_path: str) -> None:
             builder.python_executable = env.executable
             builder.scripts_dir = env.scripts_dir
             env.install(builder.build_system_requires)
-            builder.build("wheel", target_path)
+            builder.build(
+                "wheel", target_path, config_settings={"--global-option": "--quiet"}
+            )
     else:
-        logger.info(
+        logger.warning(
             "Custom BentoML build is detected. For a Bento to use the same build at serving time, add your custom BentoML build to the pip packages list, e.g. `packages=['git+https://github.com/bentoml/bentoml.git@13dfb36']`"
         )

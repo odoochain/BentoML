@@ -1,10 +1,10 @@
 # pylint: disable=unused-argument
 from __future__ import annotations
 
-import os
-import typing as t
-import tempfile
 import contextlib
+import os
+import tempfile
+import typing as t
 from typing import TYPE_CHECKING
 
 import psutil
@@ -12,21 +12,22 @@ import pytest
 from pytest import MonkeyPatch
 
 import bentoml
+from bentoml._internal.configuration import BENTOML_VERSION
+from bentoml._internal.configuration import clean_bentoml_version
+from bentoml._internal.configuration.containers import BentoMLContainer
+from bentoml._internal.models import ModelContext
 from bentoml._internal.utils import LazyLoader
 from bentoml._internal.utils import validate_or_create_dir
-from bentoml._internal.models import ModelContext
-from bentoml._internal.configuration import CLEAN_BENTOML_VERSION
-from bentoml._internal.configuration.containers import BentoMLContainer
 
 if TYPE_CHECKING:
     import numpy as np
-    from _pytest.main import Session
-    from _pytest.nodes import Item
     from _pytest.config import Config
     from _pytest.config import ExitCode
-    from _pytest.python import Metafunc
-    from _pytest.fixtures import FixtureRequest
     from _pytest.config.argparsing import Parser
+    from _pytest.fixtures import FixtureRequest
+    from _pytest.main import Session
+    from _pytest.nodes import Item
+    from _pytest.python import Metafunc
 
     from bentoml._internal.server.metrics.prometheus import PrometheusClient
 
@@ -45,7 +46,7 @@ _RUN_GRPC_TESTS_MARKER = "--run-grpc-tests"
 
 @pytest.mark.tryfirst
 def pytest_report_header(config: Config) -> list[str]:
-    return [f"bentoml: version={CLEAN_BENTOML_VERSION}"]
+    return [f"bentoml: version={clean_bentoml_version(BENTOML_VERSION)}"]
 
 
 @pytest.hookimpl
@@ -103,17 +104,17 @@ def _setup_deployment_mode(metafunc: Metafunc):
     We will dynamically add this fixture to tests functions that has ``deployment_mode`` fixtures.
 
     Current matrix:
-    - deployment_mode: ["docker", "distributed", "standalone"]
+    - deployment_mode: ["container", "distributed", "standalone"]
     """
     if os.getenv("VSCODE_IPC_HOOK_CLI") and not os.getenv("GITHUB_CODESPACE_TOKEN"):
         # When running inside VSCode remote container locally, we don't have access to
-        # exposed reserved ports, so we can't run docker-based tests. However on GitHub
-        # Codespaces, we can run docker-based tests.
+        # exposed reserved ports, so we can't run container-based tests. However on GitHub
+        # Codespaces, we can run container-based tests.
         # Note that inside the remote container, it is already running as a Linux container.
         deployment_mode = ["distributed", "standalone"]
     else:
         if os.environ.get("GITHUB_ACTIONS") and (psutil.WINDOWS or psutil.MACOS):
-            # Due to GitHub Actions' limitation, we can't run docker-based tests
+            # Due to GitHub Actions' limitation, we can't run container-based tests
             # on Windows and macOS. However, we can still running those tests on
             # local development.
             if psutil.MACOS:
@@ -122,9 +123,9 @@ def _setup_deployment_mode(metafunc: Metafunc):
                 deployment_mode = ["standalone"]
         else:
             if psutil.WINDOWS:
-                deployment_mode = ["standalone", "docker"]
+                deployment_mode = ["standalone", "container"]
             else:
-                deployment_mode = ["distributed", "standalone", "docker"]
+                deployment_mode = ["distributed", "standalone", "container"]
     metafunc.parametrize("deployment_mode", deployment_mode, scope="session")
 
 
@@ -183,14 +184,16 @@ def _setup_test_directory() -> tuple[str, str]:
     bentoml_home = tempfile.mkdtemp("bentoml-pytest")
     bentos = os.path.join(bentoml_home, "bentos")
     models = os.path.join(bentoml_home, "models")
+    tmp_bentos = os.path.join(bentoml_home, "tmp_bentos")
     multiproc_dir = os.path.join(bentoml_home, "prometheus_multiproc_dir")
-    validate_or_create_dir(bentos, models, multiproc_dir)
+    validate_or_create_dir(bentos, models, tmp_bentos, multiproc_dir)
 
     # We need to set the below value inside container due to
     # the fact that each value is a singleton, and will be cached.
     BentoMLContainer.bentoml_home.set(bentoml_home)
     BentoMLContainer.bento_store_dir.set(bentos)
     BentoMLContainer.model_store_dir.set(models)
+    BentoMLContainer.tmp_bento_store_dir.set(tmp_bentos)
     BentoMLContainer.prometheus_multiproc_dir.set(multiproc_dir)
     return bentoml_home, multiproc_dir
 
@@ -302,6 +305,10 @@ def fixture_metrics_client() -> PrometheusClient:
 @pytest.fixture(scope="function", name="change_test_dir")
 def fixture_change_dir(request: FixtureRequest) -> t.Generator[None, None, None]:
     """A fixture to change given test directory to the directory of the current running test."""
-    os.chdir(request.fspath.dirname)  # type: ignore (bad pytest stubs)
+    os.chdir(
+        request.fspath.dirname,  # type: ignore (bad pytest stubs)
+    )
     yield
-    os.chdir(request.config.invocation_dir)  # type: ignore (bad pytest stubs)
+    os.chdir(
+        request.config.invocation_dir,  # type: ignore (bad pytest stubs)
+    )

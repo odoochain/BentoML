@@ -1,23 +1,24 @@
 from __future__ import annotations
 
-import typing as t
 import logging
+import typing as t
+from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
-from pathlib import Path
 
 import cloudpickle
 
 import bentoml
 from bentoml import Tag
 
-from ..types import LazyType
-from ..models import Model
-from ..utils.pkg import get_pkg_version
 from ...exceptions import NotFound
+from ..models import Model
 from ..models.model import ModelContext
-from .common.pytorch import torch
+from ..models.model import PartialKwargsModelOptions as ModelOptions
+from ..types import LazyType
+from ..utils.pkg import get_pkg_version
 from .common.pytorch import PyTorchTensorContainer
+from .common.pytorch import torch
 
 __all__ = ["load_model", "save_model", "get_runnable", "get", "PyTorchTensorContainer"]
 
@@ -53,7 +54,7 @@ def load_model(
         tag (:code:`Union[str, Tag]`):
             Tag of a saved model in BentoML local modelstore.
         device_id (:code:`str`, `optional`, default to :code:`cpu`):
-            Optional devices to put the given model on. Refers to `device attributes <https://pytorch.org/docs/stable/tensor_attributes.html#torch.torch.device>`_.
+            Optional devices to put the given model on. Refer to `device attributes <https://pytorch.org/docs/stable/tensor_attributes.html#torch.torch.device>`_.
 
     Returns:
         :obj:`torch.nn.Module`: an instance of :code:`torch.nn.Module` from BentoML modelstore.
@@ -80,7 +81,7 @@ def load_model(
 
 
 def save_model(
-    name: str,
+    name: Tag | str,
     model: "torch.nn.Module",
     *,
     signatures: ModelSignaturesType | None = None,
@@ -162,7 +163,9 @@ def save_model(
     if signatures is None:
         signatures = {"__call__": {"batchable": False}}
         logger.info(
-            f"Using the default model signature ({signatures}) for model {name}."
+            'Using the default model signature for PyTorch (%s) for model "%s".',
+            signatures,
+            name,
         )
 
     with bentoml.models.create(
@@ -173,7 +176,7 @@ def save_model(
         signatures=signatures,
         custom_objects=custom_objects,
         external_modules=external_modules,
-        options=None,
+        options=ModelOptions(),
         context=context,
         metadata=metadata,
     ) as bento_model:
@@ -188,21 +191,25 @@ def get_runnable(bento_model: Model):
     """
     Private API: use :obj:`~bentoml.Model.to_runnable` instead.
     """
-    from .common.pytorch import partial_class
     from .common.pytorch import PytorchModelRunnable
     from .common.pytorch import make_pytorch_runnable_method
+    from .common.pytorch import partial_class
 
+    partial_kwargs: t.Dict[str, t.Any] = bento_model.info.options.partial_kwargs  # type: ignore
+
+    runnable_class: type[PytorchModelRunnable] = partial_class(
+        PytorchModelRunnable,
+        bento_model=bento_model,
+        loader=load_model,
+    )
     for method_name, options in bento_model.info.signatures.items():
-        PytorchModelRunnable.add_method(
-            make_pytorch_runnable_method(method_name),
+        method_partial_kwargs = partial_kwargs.get(method_name)
+        runnable_class.add_method(
+            make_pytorch_runnable_method(method_name, method_partial_kwargs),
             name=method_name,
             batchable=options.batchable,
             batch_dim=options.batch_dim,
             input_spec=options.input_spec,
             output_spec=options.output_spec,
         )
-    return partial_class(
-        PytorchModelRunnable,
-        bento_model=bento_model,
-        loader=load_model,
-    )
+    return runnable_class

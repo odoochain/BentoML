@@ -1,6 +1,6 @@
-=====================
-Customize BentoServer
-=====================
+============
+Bento Server
+============
 
 BentoML Server runs the Service API in an `ASGI <https://asgi.readthedocs.io/en/latest/>`_
 web serving layer and puts Runners in a separate worker process pool managed by BentoML. The ASGI web
@@ -27,7 +27,7 @@ will be used as the REST API URL ``/classify``:
         ...
 
 However, user can customize this URL endpoint via the ``route`` option in the
-``bentoml.Service#api`` decorator. For example, the following code will assign the 
+``bentoml.Service#api`` decorator. For example, the following code will assign the
 endpoint with URL ``/v1/models/iris_classifier/predict``, regardless of the API function name:
 
 
@@ -96,7 +96,8 @@ Bundle ASGI app (e.g. FastAPI)
 BentoML's web serving layer is ASGI native, existing ASGI apps can be mounted directly
 to and serving side-by-side with your BentoML Service.
 
-Here’s an example of mounting BentoML Service with an ASGI app built with FastAPI:
+Here’s an example (excerpted from :examples:`our example project <custom_web_serving/flask_example>`)
+of mounting BentoML Service with an ASGI app built with FastAPI:
 
 .. code-block:: python
 
@@ -154,7 +155,8 @@ For WSGI web apps, such as a Flask app, BentoML provides a different API ``mount
 which will internally convert the provided WSGI app into an ASGI app and serve side-by-side
 with your BentoML Service.
 
-Here’s an example of mounting BentoML Service with an WSGI app built with Flask:
+Here’s an example (excerpted from :examples:`our example project <custom_web_serving/fastapi_example>`)
+of mounting BentoML Service with an WSGI app built with Flask:
 
 .. code-block:: python
 

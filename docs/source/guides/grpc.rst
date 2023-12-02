@@ -2,6 +2,8 @@
 Serving with gRPC
 =================
 
+*time expected: 12 minutes*
+
 This guide will demonstrate advanced features that BentoML offers for you to get started
 with `gRPC <https://grpc.io/>`_:
 
@@ -39,20 +41,20 @@ Thats it! You can now serve your Bento with gRPC via :ref:`bentoml serve-grpc <r
 
 .. code-block:: bash
 
-   » bentoml serve-grpc iris_classifier:latest --production
+   » bentoml serve-grpc iris_classifier:latest
 
 Using your gRPC BentoService
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are two ways to interact with your gRPC BentoService:
 
-1. Use tools such as :github:`fullstorydev/grpcurl`, :github:`fullstorydev/grpcui`: 
+1. Use tools such as :github:`fullstorydev/grpcurl`, :github:`fullstorydev/grpcui`:
    The server requires :github:`reflection <grpc/grpc/blob/master/doc/server-reflection.md>` to be enabled for those tools to work.
    Pass in ``--enable-reflection`` to enable reflection:
 
    .. code-block:: bash
 
-      » bentoml serve-grpc iris_classifier:latest --production --enable-reflection
+      » bentoml serve-grpc iris_classifier:latest --enable-reflection
 
    .. include:: ./snippets/grpc/grpc_tools.rst
 
@@ -156,9 +158,9 @@ gRPC server:
 
             .. code-block:: go
 
-               require github.com/bentoml/bentoml/grpc/v1alpha1 v0.0.0-unpublished
+               require github.com/bentoml/bentoml/grpc/v1 v0.0.0-unpublished
 
-               replace github.com/bentoml/bentoml/grpc/v1alpha1 v0.0.0-unpublished => ./github.com/bentoml/bentoml/grpc/v1alpha1
+               replace github.com/bentoml/bentoml/grpc/v1 v0.0.0-unpublished => ./github.com/bentoml/bentoml/grpc/v1
 
             By using `replace directive <https://go.dev/ref/mod#go-mod-file-replace>`_, we
             ensure that Go will know where our generated stubs to be imported from. (since we don't host the generate gRPC stubs on `pkg.go.dev` 😄)
@@ -172,14 +174,14 @@ gRPC server:
                » protoc -I. -I thirdparty/protobuf/src  \
                         --go_out=. --go_opt=paths=import \
                         --go-grpc_out=. --go-grpc_opt=paths=import \
-                        bentoml/grpc/v1alpha1/service.proto
+                        bentoml/grpc/v1/service.proto
 
             Then run the following to make sure the generated stubs are importable:
 
             .. code-block:: bash
 
-               » pushd github.com/bentoml/bentoml/grpc/v1alpha1
-               » go mod init v1alpha1 && go mod tidy
+               » pushd github.com/bentoml/bentoml/grpc/v1
+               » go mod init v1 && go mod tidy
                » popd
 
       Create a ``client.go`` file with the following content:
@@ -233,13 +235,18 @@ gRPC server:
                » protoc -I . -I ./thirdparty/protobuf/src \
                         --cpp_out=. --grpc_out=. \
                         --plugin=protoc-gen-grpc=$(which grpc_cpp_plugin) \
-                        bentoml/grpc/v1alpha1/service.proto
+                        bentoml/grpc/v1/service.proto
 
       Create a ``client.cpp`` file with the following content:
 
       .. literalinclude:: ../../../grpc-client/cpp/client.cc
          :language: cpp
          :caption: `client.cpp`
+
+   .. tab-item:: Rust
+      :sync: rust
+
+      See :github:`Rust gRPC client implementation <tree/main/grpc-client/rust/README.md>`.
 
    .. tab-item:: Java
       :sync: java
@@ -303,7 +310,7 @@ gRPC server:
             The following ``build.gradle`` should be able to help you get started:
 
             .. literalinclude:: ../../../grpc-client/java/build.gradle
-               :language: groovy
+               :language: text
                :caption: build.gradle
 
             To build the client, run:
@@ -331,7 +338,7 @@ gRPC server:
                      -I ./thirdparty/protobuf/src \
                      --java_out=./src/main/java \
                      --grpc-java_out=./src/main/java \
-                     bentoml/grpc/v1alpha1/service.proto
+                     bentoml/grpc/v1/service.proto
 
    .. tab-item:: Kotlin
       :sync: kotlin
@@ -386,7 +393,7 @@ gRPC server:
             The following ``build.gradle.kts`` should be able to help you get started:
 
             .. literalinclude:: ../../../grpc-client/kotlin/build.gradle.kts
-               :language: groovy
+               :language: text
                :caption: build.gradle.kts
 
             To build the client, run:
@@ -414,7 +421,7 @@ gRPC server:
                      --kotlin_out ./kotlin/src/main/kotlin/ \
                      --grpc-kotlin_out ./kotlin/src/main/kotlin \
                      --plugin=protoc-gen-grpc-kotlin=$(which protoc-gen-grpc-kotlin) \
-                     bentoml/grpc/v1alpha1/service.proto
+                     bentoml/grpc/v1/service.proto
 
    .. tab-item:: Node.js
       :sync: nodejs
@@ -459,7 +466,7 @@ gRPC server:
                   -I . -I ./thirdparty/protobuf/src \
                   --js_out=import_style=commonjs,binary:. \
                   --grpc_out=grpc_js:js \
-                  bentoml/grpc/v1alpha1/service.proto
+                  bentoml/grpc/v1/service.proto
 
       Proceed to create a ``client.js`` file with the following content:
 
@@ -501,7 +508,7 @@ gRPC server:
                   --swift_out=Sources --swift_opt=Visibility=Public \
                   --grpc-swift_out=Sources --grpc-swift_opt=Visibility=Public \
                   --plugin=protoc-gen-grpc-swift=$(which protoc-gen-grpc-swift) \
-                  bentoml/grpc/v1alpha1/service.proto
+                  bentoml/grpc/v1/service.proto
 
       Proceed to create a ``Sources/BentoServiceClient/main.swift`` file with the following content:
 
@@ -549,7 +556,7 @@ gRPC server:
                   --php_out=. \
                   --grpc_out=. \
                   --plugin=protoc-gen-grpc=$(which grpc_php_plugin) \
-                  bentoml/grpc/v1alpha1/service.proto
+                  bentoml/grpc/v1/service.proto
 
       Proceed to create a ``BentoServiceClient.php`` file with the following content:
 
@@ -613,6 +620,11 @@ Then you can proceed to run the client scripts:
       .. note::
 
          See the :github:`instructions on GitHub <bentoml/BentoML/tree/main/grpc-client/README.md>` for working C++ client.
+
+   .. tab-item:: Rust
+      :sync: rust
+
+      See :github:`Rust gRPC client implementation <tree/main/grpc-client/rust/README.md>`.
 
    .. tab-item:: Java
       :sync: java
@@ -707,12 +719,7 @@ Then you can proceed to run the client scripts:
       .. tab-item:: Dart
          :sync: dart
 
-         :bdg-primary:`Note:` Please check out the :github:`gRPC Dart <grpc/grpc-dart/tree/master/examples>` examples folder for :github:`grpc/grpc-dart` client implementation.
-
-      .. tab-item:: Rust
-         :sync: rust
-
-         :bdg-primary:`Note:` Currently there are no official gRPC Rust client implementation. Please check out the :github:`tikv/grpc-rs` as one of the unofficial implementation.
+         :bdg-primary:`Note:` Please check out the :github:`gRPC Dart <grpc/grpc-dart/tree/master/example>` examples folder for :github:`grpc/grpc-dart` client implementation.
 
 
 After successfully running the client, proceed to build the bento as usual:
@@ -734,7 +741,7 @@ dependencies to your Bento
 
    » bentoml containerize iris_classifier:latest --enable-features=grpc
 
-``--enable-features`` allows users to containerize any of the existing Bentos with :ref:`additional features </installation:Additional features>` without having to rebuild the Bento.
+``--enable-features`` allows users to containerize any of the existing Bentos with :ref:`additional features <concepts/bento:Enable features for your Bento>` that BentoML provides without having to rebuild the Bento.
 
 .. note::
 
@@ -746,7 +753,7 @@ After containerization, your Bento container can now be used with gRPC:
 
    » docker run -it --rm \
                 -p 3000:3000 -p 3001:3001 \
-                iris_classifier:6otbsmxzq6lwbgxi serve-grpc --production
+                iris_classifier:6otbsmxzq6lwbgxi serve-grpc
 
 Congratulations! You have successfully served, containerized and tested your BentoService with gRPC.
 
@@ -773,16 +780,21 @@ Let's take a quick look at `protobuf <https://developers.google.com/protocol-buf
 
    .. tab-set::
 
+      .. tab-item:: v1
+
+         .. literalinclude:: ../../../src/bentoml/grpc/v1/service.proto
+            :language: protobuf
+
       .. tab-item:: v1alpha1
 
-         .. literalinclude:: ../../../bentoml/grpc/v1alpha1/service.proto
+         .. literalinclude:: ../../../src/bentoml/grpc/v1alpha1/service.proto
             :language: protobuf
 
 As you can see, BentoService defines a `simple rpc` ``Call`` that sends a ``Request`` message and returns a ``Response`` message.
 
 A ``Request`` message takes in:
 
-* `api_name`: the name of the API function defined inside your BentoService. 
+* `api_name`: the name of the API function defined inside your BentoService.
 * `oneof <https://developers.google.com/protocol-buffers/docs/proto3#oneof>`_ `content`: the field can be one of the following types:
 
 +------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
@@ -791,6 +803,8 @@ A ``Request`` message takes in:
 | :ref:`guides/grpc:Array representation via ``NDArray```          | :ref:`bentoml.io.NumpyNdarray <reference/api_io_descriptors:NumPy \`\`ndarray\`\`>`       |
 +------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
 | :ref:`guides/grpc:Tabular data representation via ``DataFrame``` | :ref:`bentoml.io.PandasDataFrame <reference/api_io_descriptors:Tabular Data with Pandas>` |
++------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
+| :ref:`guides/grpc:Series representation via ``Series```          | :ref:`bentoml.io.PandasDataFrame <reference/api_io_descriptors:Tabular Data with Pandas>` |
 +------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
 | :ref:`guides/grpc:File-like object via ``File```                 | :ref:`bentoml.io.File <reference/api_io_descriptors:Files>`                               |
 +------------------------------------------------------------------+-------------------------------------------------------------------------------------------+
@@ -1035,6 +1049,54 @@ It accepts the following fields:
 
 :bdg-primary:`API reference:` :meth:`bentoml.io.PandasDataFrame.from_proto`
 
+Series representation via ``Series``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+:bdg-info:`Description:` ``Series`` portrays a series of values. This can be used for representing Series types in tabular data.
+
+It accepts the following fields:
+
+* `string_values`, `float_values`, `double_values`, `bool_values`, `int32_values`, `int64_values`
+
+  Similar to NumpyNdarray, each of the fields is a `list` of the corresponding data type. The list is a 1-D array, and will be then pass to ``pd.Series``.
+
+  Each request should only contain **ONE** of the aforementioned fields.
+
+  The interaction among the above fields and ``dtype`` from ``PandasSeries`` are as follows:
+
+  - if ``dtype`` is not present in the descriptor:
+      * All of the fields are empty, then we return an empty ``pd.Series``.
+      * We will loop through all of the provided fields, and only allows one field per message.
+
+        If here are more than one field (i.e. ``string_values`` and ``float_values``), then we will raise an error, as we don't know how to deserialize the data.
+
+  - otherwise:
+      * We will use the provided dtype-to-field map to get the data from the given message.
+
+.. grid:: 2
+
+    .. grid-item-card::  ``Python API``
+
+      .. code-block:: python
+
+         PandasSeries.from_sample([5.4, 3.4, 1.5, 0.4])
+
+    .. grid-item-card::  ``pb.Series``
+
+      .. code-block:: none
+
+         series {
+           float_values: 5.4
+           float_values: 3.4
+           float_values: 1.5
+           float_values: 0.4
+         }
+
+
+:bdg-primary:`API reference:` :meth:`bentoml.io.PandasSeries.from_proto`
+
+:raw-html:`<br />`
+
 File-like object via ``File``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1052,10 +1114,47 @@ It accepts the following fields:
 
   A `bytes` field that represents the content of the file.
 
-.. TODO::
+* `kind`
 
-   - Document ``kind`` once enum was dropped.
-   - Demonstrate python API to protobuf representation
+  An optional `string` field that represents the file type. If specified, it will raise an error if
+  ``mime_type`` specified in :ref:`bentoml.io.File <reference/api_io_descriptors:Files>` is not matched.
+
+.. grid:: 2
+
+    .. grid-item-card::  ``Python API``
+
+      .. code-block:: python
+
+         Image(mime_type="application/pdf")
+
+    .. grid-item-card::  ``pb.File``
+
+      .. code-block:: none
+
+         file {
+           kind: "application/pdf"
+           content: <bytes>
+         }
+
+
+:ref:`bentoml.io.Image <reference/api_io_descriptors:Images>` will also be using ``pb.File``.
+
+.. grid:: 2
+
+    .. grid-item-card::  ``Python API``
+
+      .. code-block:: python
+
+         File(mime_type="image/png")
+
+    .. grid-item-card::  ``pb.File``
+
+      .. code-block:: none
+
+         file {
+           kind: "image/png"
+           content: <bytes>
+         }
 
 
 Complex payload via ``Multipart``
@@ -1185,7 +1284,7 @@ because BentoML gRPC server is an async implementation of gRPC server.
    If you are using ``grpc.ServerInterceptor``, you will need to migrate it over
    to use the new ``grpc.aio.ServerInterceptor`` in order to use this feature.
 
-   Feel free to reach out to us at `#support on Slack <https://l.linklyhq.com/l/ktOX>`_
+   Feel free to reach out to us at `#support on Slack <https://l.bentoml.com/join-slack>`_
 
 .. dropdown:: A toy implementation ``AppendMetadataInterceptor``
 
@@ -1360,7 +1459,7 @@ faster go-to-market strategy.
 Performance tuning
 ~~~~~~~~~~~~~~~~~~
 
-BentoML allows user to tune the performance of gRPC via :ref:`bentoml_configuration.yaml <guides/configuration:Configuring BentoML>` via ``api_server.grpc``.
+BentoML allows user to tune the performance of gRPC via :ref:`bentoml_configuration.yaml <guides/configuration:Configuration>` via ``api_server.grpc``.
 
 A quick overview of the available configuration for gRPC:
 
@@ -1385,10 +1484,10 @@ A quick overview of the available configuration for gRPC:
 ``max_concurrent_streams``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. epigraph::
    :bdg-info:`Definition:` Maximum number of concurrent incoming streams to allow on a HTTP2 connection.
 
-By default we don't set a limit cap. HTTP/2 connections typically has limit of `maximum concurrent streams <httpwg.org/specs/rfc7540.html#rfc.section.5.1.2>`_
-on a connection at one time.
+By default we don't set a limit cap. HTTP/2 connections typically has limit of `maximum concurrent streams <https://httpwg.org/specs/rfc7540.html#rfc.section.5.1.2>`_ on a connection at one time.
 
 .. dropdown:: Some notes about fine-tuning ``max_concurrent_streams``
 
@@ -1398,7 +1497,7 @@ on a connection at one time.
    application will higher load and long running streams could see a performance degradation caused by queuing because of the limit.
 
    Setting a limit cap on the number of concurrent streams will prevent this from happening, but it also means that
-   you need to tune the limit cap to the right number. 
+   you need to tune the limit cap to the right number.
 
    * If the limit cap is too low, you will sooner or later running into the issue mentioned above.
 
@@ -1413,6 +1512,7 @@ on a connection at one time.
 ``maximum_concurrent_rpcs``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. epigraph::
    :bdg-info:`Definition:` The maximum number of concurrent RPCs this server will service before returning ``RESOURCE_EXHAUSTED`` status.
 
 By default we set to ``None`` to indicate no limit, and let gRPC to decide the limit.
@@ -1422,6 +1522,7 @@ By default we set to ``None`` to indicate no limit, and let gRPC to decide the l
 ``max_message_length``
 ^^^^^^^^^^^^^^^^^^^^^^
 
+.. epigraph::
    :bdg-info:`Definition:` The maximum message length in bytes allowed to be received on/can be send to the server.
 
 By default we set to ``-1`` to indicate no limit.
@@ -1445,4 +1546,3 @@ message.
 
 
 We recommend you to also check out `gRPC performance best practice <https://grpc.io/docs/guides/performance/>`_ to learn about best practice for gRPC.
-

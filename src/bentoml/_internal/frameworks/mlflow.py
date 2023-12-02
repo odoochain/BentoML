@@ -1,19 +1,18 @@
 from __future__ import annotations
 
+import logging
 import os
 import shutil
-import typing as t
-import logging
 import tempfile
+import typing as t
 from typing import TYPE_CHECKING
 
 import bentoml
 from bentoml import Tag
-from bentoml.models import ModelContext
-from bentoml.exceptions import NotFound
 from bentoml.exceptions import BentoMLException
-
-from ..utils import LazyLoader
+from bentoml.exceptions import MissingDependencyException
+from bentoml.exceptions import NotFound
+from bentoml.models import ModelContext
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -22,17 +21,12 @@ if TYPE_CHECKING:
     from bentoml.types import ModelSignatureDict
 
 
-if TYPE_CHECKING:
+try:
     import mlflow
     import mlflow.models
-else:
-    mlflow = LazyLoader(
-        "mlflow",
-        globals(),
-        "mlflow",
-        exc_msg="`mlflow` is required in order to use module `bentoml.mlflow`, install "
-        "mlflow with `pip install mlflow`. For more information, refer to "
-        "https://mlflow.org/",
+except ImportError:  # pragma: no cover
+    raise MissingDependencyException(
+        "'mlflow' is required in order to use module 'bentoml.mlflow', install mlflow with 'pip install mlflow'. For more information, refer to https://mlflow.org/",
     )
 
 
@@ -102,10 +96,10 @@ def load_model(
 
 
 def import_model(
-    name: str,
+    name: Tag | str,
     model_uri: str,
     *,
-    signatures: dict[str, ModelSignatureDict | ModelSignature] | None = None,
+    signatures: dict[str, ModelSignature] | dict[str, ModelSignatureDict] | None = None,
     labels: dict[str, str] | None = None,
     custom_objects: dict[str, t.Any] | None = None,
     external_modules: t.List[ModuleType] | None = None,
@@ -167,7 +161,9 @@ def import_model(
             "predict": {"batchable": False},
         }
         logger.info(
-            f"Using the default model signature for MLflow pyfunc model ({signatures}) for model {name}."
+            'Using the default model signature for MLflow (%s) for model "%s".',
+            signatures,
+            name,
         )
     if len(signatures) != 1 or "predict" not in signatures:
         raise BentoMLException(
@@ -187,8 +183,8 @@ def import_model(
         context=context,
     ) as bento_model:
         from mlflow.models import Model as MLflowModel
-        from mlflow.pyfunc import FLAVOR_NAME as PYFUNC_FLAVOR_NAME
         from mlflow.models.model import MLMODEL_FILE_NAME
+        from mlflow.pyfunc import FLAVOR_NAME as PYFUNC_FLAVOR_NAME
 
         # Explicitly provide a destination dir to mlflow so that we don't
         # accidentially download into the root of the bento model temp dir
@@ -202,7 +198,7 @@ def import_model(
             local_path = download_artifacts(
                 artifact_uri=model_uri, dst_path=download_dir
             )
-        except ImportError:
+        except (ModuleNotFoundError, ImportError):
             # For MLflow < 1.25
             from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 
@@ -248,7 +244,7 @@ def get_runnable(bento_model: bentoml.Model) -> t.Type[bentoml.Runnable]:
         # because most custom python_function models are likely numpy code or model
         # inference with pre/post-processing code.
         SUPPORTED_RESOURCES = ("cpu",)
-        SUPPORTS_CPU_MULTI_THREADING = True  # type: ignore
+        SUPPORTS_CPU_MULTI_THREADING = True
 
         def __init__(self):
             super().__init__()

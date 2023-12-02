@@ -63,7 +63,7 @@ Building a Service using CatBoost
 
 .. seealso::
 
-   :ref:`Building a Service <concepts/service:Service and APIs>`: more information on creating a prediction service with BentoML.
+   :ref:`Building a Service <concepts/service:Service APIs>`: more information on creating a prediction service with BentoML.
 
 .. code-block:: python
 
@@ -85,7 +85,7 @@ Building a Service using CatBoost
       return res
 
 
-When constructing a :ref:`bentofile.yaml <concepts/bento:Bento Build Options>`,
+When constructing a :ref:`bentofile.yaml <concepts/bento:Bento build options>`,
 there are two ways to include CatBoost as a dependency, via ``python`` or
 ``conda``:
 
@@ -138,7 +138,7 @@ Using GPU
 
 CatBoost Runners will automatically use ``task_type=GPU`` if a GPU is detected.
 
-This behavior can be disabled using the :ref:`BentoML configuration file<guides/configuration:Configuring BentoML>`:
+This behavior can be disabled using the :ref:`BentoML configuration file<guides/configuration:Configuration>`:
 
 access:
 
@@ -153,7 +153,7 @@ access:
          resources:
              nvidia.com/gpu: 0
 
-Adaptive batching 
+Adaptive batching
 ~~~~~~~~~~~~~~~~~
 
 .. seealso::

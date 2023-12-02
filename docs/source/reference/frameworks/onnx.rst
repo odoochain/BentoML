@@ -5,7 +5,7 @@ ONNX
 .. admonition:: About this page
 
    This is an API reference for ONNX in BentoML. Please refer to
-   :doc:`</frameworks/onnx>` for more
+   :doc:`ONNX guide </frameworks/onnx>` for more
    information about how to use ONNX in BentoML.
 
 

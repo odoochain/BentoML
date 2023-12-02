@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 import typing as t
-import logging
 import urllib.parse
 from abc import ABC
 from abc import abstractmethod
@@ -13,6 +13,7 @@ import fs.copy
 import fs.errors
 import fs.mirror
 import fs.opener
+import fs.opener.errors
 import fs.tempfs
 from fs import open_fs
 from fs.base import FS
@@ -71,7 +72,7 @@ class Exportable(ABC):
     ) -> T:
         try:
             parsedurl = fs.opener.parse(path)
-        except fs.opener.errors.ParseError:  # type: ignore (FS types)
+        except fs.opener.errors.ParseError:
             if protocol is None:
                 protocol = "osfs"
                 resource: str = path if os.sep == "/" else path.replace(os.sep, "/")
@@ -93,7 +94,7 @@ class Exportable(ABC):
         if protocol not in fs.opener.registry.protocols:  # type: ignore (FS types)
             if protocol == "s3":
                 raise ValueError(
-                    "Tried to open an S3 url but the protocol is not registered; did you 'pip install fs-s3fs'?"
+                    "Tried to open an S3 url but the protocol is not registered; did you 'pip install \"bentoml[aws]\"'?"
                 )
             else:
                 raise ValueError(
@@ -196,7 +197,7 @@ class Exportable(ABC):
                 protocol = "osfs"
                 resource = path if os.sep == "/" else path.replace(os.sep, "/")
             else:
-                resource = ""
+                resource = path
         else:
             if any(v is not None for v in [protocol, user, passwd, params, subpath]):
                 raise ValueError(

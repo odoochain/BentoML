@@ -1,74 +1,77 @@
-# pylint: disable=unused-argument
 """
-User facing python APIs for managing local bentos and build new bentos
+User facing python APIs for managing local bentos and build new bentos.
 """
 
 from __future__ import annotations
 
-import os
-import sys
-import typing as t
 import logging
-import tempfile
-import contextlib
+import os
+import re
 import subprocess
-from typing import TYPE_CHECKING
-from functools import partial
+import sys
+import tempfile
+import typing as t
 
-from simple_di import inject
 from simple_di import Provide
+from simple_di import inject
 
-from .exceptions import InvalidArgument
-from .exceptions import BentoMLException
-from ._internal.tag import Tag
 from ._internal.bento import Bento
-from ._internal.utils import resolve_user_filepath
 from ._internal.bento.build_config import BentoBuildConfig
 from ._internal.configuration.containers import BentoMLContainer
+from ._internal.tag import Tag
+from ._internal.utils import resolve_user_filepath
+from .exceptions import BadInput
+from .exceptions import BentoMLException
+from .exceptions import InvalidArgument
 
-if sys.version_info >= (3, 8):
-    from shutil import copytree
-else:
-    from backports.shutil_copytree import copytree
-
-if TYPE_CHECKING:
+if t.TYPE_CHECKING:
     from ._internal.bento import BentoStore
-    from ._internal.types import PathType
+    from ._internal.bento.build_config import CondaOptions
+    from ._internal.bento.build_config import DockerOptions
+    from ._internal.bento.build_config import ModelSpec
+    from ._internal.bento.build_config import PythonOptions
+    from ._internal.cloud import BentoCloudClient
+    from .server import Server
+
 
 logger = logging.getLogger(__name__)
 
-BENTOML_FIGLET = """
-██████╗░███████╗███╗░░██╗████████╗░█████╗░███╗░░░███╗██╗░░░░░
-██╔══██╗██╔════╝████╗░██║╚══██╔══╝██╔══██╗████╗░████║██║░░░░░
-██████╦╝█████╗░░██╔██╗██║░░░██║░░░██║░░██║██╔████╔██║██║░░░░░
-██╔══██╗██╔══╝░░██║╚████║░░░██║░░░██║░░██║██║╚██╔╝██║██║░░░░░
-██████╦╝███████╗██║░╚███║░░░██║░░░╚█████╔╝██║░╚═╝░██║███████╗
-╚═════╝░╚══════╝╚═╝░░╚══╝░░░╚═╝░░░░╚════╝░╚═╝░░░░░╚═╝╚══════╝
-"""
+__all__ = [
+    "list",
+    "get",
+    "delete",
+    "import_bento",
+    "export_bento",
+    "push",
+    "pull",
+    "build",
+    "build_bentofile",
+    "containerize",
+]
 
 
 @inject
-def list(  # pylint: disable=redefined-builtin
-    tag: t.Optional[t.Union[Tag, str]] = None,
-    _bento_store: "BentoStore" = Provide[BentoMLContainer.bento_store],
-) -> "t.List[Bento]":
+def list(
+    tag: Tag | str | None = None,
+    _bento_store: BentoStore = Provide[BentoMLContainer.bento_store],
+) -> t.List[Bento]:
     return _bento_store.list(tag)
 
 
 @inject
 def get(
-    tag: t.Union[Tag, str],
+    tag: Tag | str,
     *,
-    _bento_store: "BentoStore" = Provide[BentoMLContainer.bento_store],
+    _bento_store: BentoStore = Provide[BentoMLContainer.bento_store],
 ) -> Bento:
     return _bento_store.get(tag)
 
 
 @inject
 def delete(
-    tag: t.Union[Tag, str],
+    tag: Tag | str,
     *,
-    _bento_store: "BentoStore" = Provide[BentoMLContainer.bento_store],
+    _bento_store: BentoStore = Provide[BentoMLContainer.bento_store],
 ):
     _bento_store.delete(tag)
 
@@ -76,13 +79,13 @@ def delete(
 @inject
 def import_bento(
     path: str,
-    input_format: t.Optional[str] = None,
+    input_format: str | None = None,
     *,
-    protocol: t.Optional[str] = None,
-    user: t.Optional[str] = None,
-    passwd: t.Optional[str] = None,
+    protocol: str | None = None,
+    user: str | None = None,
+    passwd: str | None = None,
     params: t.Optional[t.Dict[str, str]] = None,
-    subpath: t.Optional[str] = None,
+    subpath: str | None = None,
     _bento_store: "BentoStore" = Provide[BentoMLContainer.bento_store],
 ) -> Bento:
     """
@@ -96,39 +99,47 @@ def import_bento(
         bentoml.import_bento('/path/to/folder/my_bento.bento')
 
         # imports 'my_bento' from '/path/to/folder/my_bento.tar.gz'
-        # currently supported formats are tar.gz ('gz'), tar.xz ('xz'), tar.bz2 ('bz2'), and zip
+        # currently supported formats are tar.gz ('gz'),
+        # tar.xz ('xz'), tar.bz2 ('bz2'), and zip
         bentoml.import_bento('/path/to/folder/my_bento.tar.gz')
         # treats 'my_bento.ext' as a gzipped tarfile
         bentoml.import_bento('/path/to/folder/my_bento.ext', 'gz')
 
-        # imports 'my_bento', which is stored as an uncompressed folder, from '/path/to/folder/my_bento/'
+        # imports 'my_bento', which is stored as an
+        # uncompressed folder, from '/path/to/folder/my_bento/'
         bentoml.import_bento('/path/to/folder/my_bento', 'folder')
 
-        # imports 'my_bento' from the S3 bucket 'my_bucket', path 'folder/my_bento.bento'
-        # requires `fs-s3fs <https://pypi.org/project/fs-s3fs/>`_ ('pip install fs-s3fs')
+        # imports 'my_bento' from the S3 bucket 'my_bucket',
+        # path 'folder/my_bento.bento'
+        # requires `fs-s3fs <https://pypi.org/project/fs-s3fs/>`_
         bentoml.import_bento('s3://my_bucket/folder/my_bento.bento')
         bentoml.import_bento('my_bucket/folder/my_bento.bento', protocol='s3')
-        bentoml.import_bento('my_bucket', protocol='s3', subpath='folder/my_bento.bento')
-        bentoml.import_bento('my_bucket', protocol='s3', subpath='folder/my_bento.bento',
+        bentoml.import_bento('my_bucket', protocol='s3',
+                             subpath='folder/my_bento.bento')
+        bentoml.import_bento('my_bucket', protocol='s3',
+                             subpath='folder/my_bento.bento',
                              user='<AWS access key>', passwd='<AWS secret key>',
-                             params={'acl': 'public-read', 'cache-control': 'max-age=2592000,public'})
+                             params={'acl': 'public-read',
+                                     'cache-control': 'max-age=2592000,public'})
 
-    For a more comprehensive description of what each of the keyword arguments (:code:`protocol`,
-    :code:`user`, :code:`passwd`, :code:`params`, and :code:`subpath`) mean, see the
+    For a more comprehensive description of what each of the keyword arguments
+    (:code:`protocol`, :code:`user`, :code:`passwd`,
+     :code:`params`, and :code:`subpath`) mean, see the
     `FS URL documentation <https://docs.pyfilesystem.org/en/latest/openers.html>`_.
 
     Args:
         tag: the tag of the bento to export
         path: can be one of two things:
-            * a folder on the local filesystem
-            * an `FS URL <https://docs.pyfilesystem.org/en/latest/openers.html>`_, for example
-                :code:`'s3://my_bucket/folder/my_bento.bento'`
-        protocol: (expert) The FS protocol to use when exporting. Some example protocols are :code:`'ftp'`,
-            :code:`'s3'`, and :code:`'userdata'`
+              * a folder on the local filesystem
+              * an `FS URL <https://docs.pyfilesystem.org/en/latest/openers.html>`_,
+                for example :code:`'s3://my_bucket/folder/my_bento.bento'`
+        protocol: (expert) The FS protocol to use when exporting. Some example protocols
+                  are :code:`'ftp'`, :code:`'s3'`, and :code:`'userdata'`
         user: (expert) the username used for authentication if required, e.g. for FTP
         passwd: (expert) the username used for authentication if required, e.g. for FTP
-        params: (expert) a map of parameters to be passed to the FS used for export, e.g. :code:`{'proxy': 'myproxy.net'}`
-            for setting a proxy for FTP
+        params: (expert) a map of parameters to be passed to the FS used for
+                export, e.g. :code:`{'proxy': 'myproxy.net'}` for setting a
+                proxy for FTP
         subpath: (expert) the path inside the FS that the bento should be exported to
         _bento_store: the bento store to save the bento to
 
@@ -148,16 +159,16 @@ def import_bento(
 
 @inject
 def export_bento(
-    tag: t.Union[Tag, str],
+    tag: Tag | str,
     path: str,
-    output_format: t.Optional[str] = None,
+    output_format: str | None = None,
     *,
-    protocol: t.Optional[str] = None,
-    user: t.Optional[str] = None,
-    passwd: t.Optional[str] = None,
-    params: t.Optional[t.Dict[str, str]] = None,
-    subpath: t.Optional[str] = None,
-    _bento_store: "BentoStore" = Provide[BentoMLContainer.bento_store],
+    protocol: str | None = None,
+    user: str | None = None,
+    passwd: str | None = None,
+    params: dict[str, str] | None = None,
+    subpath: str | None = None,
+    _bento_store: BentoStore = Provide[BentoMLContainer.bento_store],
 ) -> str:
     """
     Export a bento.
@@ -204,16 +215,13 @@ def export_bento(
 
     Args:
         tag: the tag of the Bento to export
-        path: can be one of two things:
-            * a folder on the local filesystem
-            * an `FS URL <https://docs.pyfilesystem.org/en/latest/openers.html>`_
-                * for example, :code:`'s3://my_bucket/folder/my_bento.bento'`
-        protocol: (expert) The FS protocol to use when exporting. Some example protocols are :code:`'ftp'`,
-            :code:`'s3'`, and :code:`'userdata'`
+        path: can be either:
+              * a folder on the local filesystem
+              * an `FS URL <https://docs.pyfilesystem.org/en/latest/openers.html>`_. For example, :code:`'s3://my_bucket/folder/my_bento.bento'`
+        protocol: (expert) The FS protocol to use when exporting. Some example protocols are :code:`'ftp'`, :code:`'s3'`, and :code:`'userdata'`
         user: (expert) the username used for authentication if required, e.g. for FTP
         passwd: (expert) the username used for authentication if required, e.g. for FTP
-        params: (expert) a map of parameters to be passed to the FS used for export, e.g. :code:`{'proxy': 'myproxy.net'}`
-            for setting a proxy for FTP
+        params: (expert) a map of parameters to be passed to the FS used for export, e.g. :code:`{'proxy': 'myproxy.net'}` for setting a proxy for FTP
         subpath: (expert) the path inside the FS that the bento should be exported to
         _bento_store: save Bento created to this BentoStore
 
@@ -235,47 +243,47 @@ def export_bento(
 
 @inject
 def push(
-    tag: t.Union[Tag, str],
+    tag: Tag | str,
     *,
     force: bool = False,
-    _bento_store: "BentoStore" = Provide[BentoMLContainer.bento_store],
+    _bento_store: BentoStore = Provide[BentoMLContainer.bento_store],
+    _cloud_client: BentoCloudClient = Provide[BentoMLContainer.bentocloud_client],
 ):
     """Push Bento to a yatai server."""
-    from bentoml._internal.yatai_client import yatai_client
-
     bento = _bento_store.get(tag)
     if not bento:
         raise BentoMLException(f"Bento {tag} not found in local store")
-    yatai_client.push_bento(bento, force=force)
+    _cloud_client.push_bento(bento, force=force)
 
 
 @inject
 def pull(
-    tag: t.Union[Tag, str],
+    tag: Tag | str,
     *,
     force: bool = False,
-    _bento_store: "BentoStore" = Provide[BentoMLContainer.bento_store],
+    _bento_store: BentoStore = Provide[BentoMLContainer.bento_store],
+    _cloud_client: BentoCloudClient = Provide[BentoMLContainer.bentocloud_client],
 ):
-    from bentoml._internal.yatai_client import yatai_client
-
-    yatai_client.pull_bento(tag, force=force, bento_store=_bento_store)
+    _cloud_client.pull_bento(tag, force=force, bento_store=_bento_store)
 
 
 @inject
 def build(
     service: str,
     *,
-    labels: t.Optional[t.Dict[str, str]] = None,
-    description: t.Optional[str] = None,
-    include: t.Optional[t.List[str]] = None,
-    exclude: t.Optional[t.List[str]] = None,
-    docker: t.Optional[t.Dict[str, t.Any]] = None,
-    python: t.Optional[t.Dict[str, t.Any]] = None,
-    conda: t.Optional[t.Dict[str, t.Any]] = None,
-    version: t.Optional[str] = None,
-    build_ctx: t.Optional[str] = None,
+    name: str | None = None,
+    labels: dict[str, str] | None = None,
+    description: str | None = None,
+    include: t.List[str] | None = None,
+    exclude: t.List[str] | None = None,
+    docker: DockerOptions | dict[str, t.Any] | None = None,
+    python: PythonOptions | dict[str, t.Any] | None = None,
+    conda: CondaOptions | dict[str, t.Any] | None = None,
+    models: t.List[ModelSpec | str | dict[str, t.Any]] | None = None,
+    version: str | None = None,
+    build_ctx: str | None = None,
     _bento_store: BentoStore = Provide[BentoMLContainer.bento_store],
-) -> "Bento":
+) -> Bento:
     """
     User-facing API for building a Bento. The available build options are identical to the keys of a
     valid 'bentofile.yaml' file.
@@ -288,15 +296,15 @@ def build(
         labels: optional immutable labels for carrying contextual info
         description: optional description string in markdown format
         include: list of file paths and patterns specifying files to include in Bento,
-            default is all files under build_ctx, beside the ones excluded from the
-            exclude parameter or a :code:`.bentoignore` file for a given directory
+                 default is all files under build_ctx, beside the ones excluded from the
+                 exclude parameter or a :code:`.bentoignore` file for a given directory
         exclude: list of file paths and patterns to exclude from the final Bento archive
         docker: dictionary for configuring Bento's containerization process, see details
-            in :class:`bentoml._internal.bento.build_config.DockerOptions`
+                in :class:`bentoml._internal.bento.build_config.DockerOptions`
         python: dictionary for configuring Bento's python dependencies, see details in
-            :class:`bentoml._internal.bento.build_config.PythonOptions`
+                :class:`bentoml._internal.bento.build_config.PythonOptions`
         conda: dictionary for configuring Bento's conda dependencies, see details in
-            :class:`bentoml._internal.bento.build_config.CondaOptions`
+               :class:`bentoml._internal.bento.build_config.CondaOptions`
         version: Override the default auto generated version str
         build_ctx: Build context directory, when used as
         _bento_store: save Bento created to this BentoStore
@@ -338,36 +346,73 @@ def build(
                ),
            )
 
-    """  # noqa: LN001
+    """
     build_config = BentoBuildConfig(
         service=service,
+        name=name,
         description=description,
         labels=labels,
         include=include,
         exclude=exclude,
-        docker=docker,  # type: ignore
-        python=python,  # type: ignore
-        conda=conda,  # type: ignore
+        docker=docker,
+        python=python,
+        conda=conda,
+        models=models or [],
     )
 
-    bento = Bento.create(
-        build_config=build_config,
-        version=version,
-        build_ctx=build_ctx,
-    ).save(_bento_store)
-    logger.info(BENTOML_FIGLET)
-    logger.info(f"Successfully built {bento}")
-    return bento
+    build_args = [sys.executable, "-m", "bentoml", "build"]
+
+    if build_ctx is None:
+        build_ctx = "."
+    build_args.append(build_ctx)
+
+    if version is not None:
+        build_args.extend(["--version", version])
+    build_args.extend(["--output", "tag"])
+
+    copied = os.environ.copy()
+    copied.setdefault("BENTOML_HOME", BentoMLContainer.bentoml_home.get())
+
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", prefix="bentoml-build-", suffix=".yaml"
+    ) as f:
+        build_config.to_yaml(f)
+        bentofile_path = os.path.join(os.path.dirname(f.name), f.name)
+        build_args.extend(["--bentofile", bentofile_path])
+        try:
+            return get(
+                _parse_tag_from_outputs(
+                    subprocess.check_output(build_args, env=copied)
+                ),
+                _bento_store=_bento_store,
+            )
+        except subprocess.CalledProcessError as e:
+            raise BentoMLException(
+                f"Failed to build BentoService bundle (Lookup for traceback):\n{e}"
+            ) from e
+
+
+def _parse_tag_from_outputs(output: bytes) -> str:
+    matched = re.search(
+        r"^__tag__:([^:\n]+:[^:\n]+)$",
+        output.decode("utf-8").strip(),
+        flags=re.MULTILINE,
+    )
+    if matched is None:
+        raise BentoMLException(
+            f"Failed to find tag from output: {output}\nNote: Output from 'bentoml build' might not be correct. Please open an issue on GitHub."
+        )
+    return matched.group(1)
 
 
 @inject
 def build_bentofile(
     bentofile: str = "bentofile.yaml",
     *,
-    version: t.Optional[str] = None,
-    build_ctx: t.Optional[str] = None,
-    _bento_store: "BentoStore" = Provide[BentoMLContainer.bento_store],
-) -> "Bento":
+    version: str | None = None,
+    build_ctx: str | None = None,
+    _bento_store: BentoStore = Provide[BentoMLContainer.bento_store],
+) -> Bento:
     """
     Build a Bento base on options specified in a bentofile.yaml file.
 
@@ -385,183 +430,133 @@ def build_bentofile(
     except FileNotFoundError:
         raise InvalidArgument(f'bentofile "{bentofile}" not found')
 
-    with open(bentofile, "r", encoding="utf-8") as f:
-        build_config = BentoBuildConfig.from_yaml(f)
+    build_args = [sys.executable, "-m", "bentoml", "build"]
+    if build_ctx is None:
+        build_ctx = "."
+    build_args.append(build_ctx)
+    if version is not None:
+        build_args.extend(["--version", version])
+    build_args.extend(["--bentofile", bentofile, "--output", "tag"])
 
-    bento = Bento.create(
-        build_config=build_config,
-        version=version,
-        build_ctx=build_ctx,
-    ).save(_bento_store)
-    logger.info(BENTOML_FIGLET)
-    logger.info(f"Successfully built {bento}")
-    return bento
-
-
-@contextlib.contextmanager
-def construct_dockerfile(
-    bento: Bento,
-    *,
-    features: t.Sequence[str] | None = None,
-    docker_final_stage: str | None = None,
-) -> t.Generator[tuple[str, str], None, None]:
-    dockerfile_path = os.path.join("env", "docker", "Dockerfile")
-    final_instruction = ""
-    if features is not None:
-        features = [l for s in map(lambda x: x.split(","), features) for l in s]
-        if not all(f in FEATURES for f in features):
-            raise InvalidArgument(
-                f"Available features are: {FEATURES}. Invalid fields from provided: {set(features) - set(FEATURES)}"
-            )
-        final_instruction += f"""\
-RUN --mount=type=cache,target=/root/.cache/pip pip install bentoml[{','.join(features)}]
-"""
-    if docker_final_stage:
-        final_instruction += f"""\
-{docker_final_stage}
-"""
-    with open(bento.path_of(dockerfile_path), "r") as f:
-        FINAL_DOCKERFILE = f"""\
-{f.read()}
-FROM base-{bento.info.docker.distro} as final
-# Additional instructions for final image.
-{final_instruction}
-"""
-    if final_instruction != "":
-        with tempfile.TemporaryDirectory("bento-tmp") as tmpdir:
-            copytree(bento.path, tmpdir, dirs_exist_ok=True)
-            with open(os.path.join(tmpdir, dockerfile_path), "w") as dockerfile:
-                dockerfile.write(FINAL_DOCKERFILE)
-            yield tmpdir, dockerfile.name
-    else:
-        yield bento.path, dockerfile_path
+    copied = os.environ.copy()
+    copied.setdefault("BENTOML_HOME", BentoMLContainer.bentoml_home.get())
+    try:
+        return get(
+            _parse_tag_from_outputs(subprocess.check_output(build_args, env=copied)),
+            _bento_store=_bento_store,
+        )
+    except subprocess.CalledProcessError as e:
+        raise BentoMLException(
+            f"Failed to build BentoService bundle (Lookup for traceback):\n{e}"
+        ) from e
 
 
-# Sync with BentoML extra dependencies
-FEATURES = [
-    "tracing",
-    "grpc",
-    "aws",
-    "all",
-    "io-image",
-    "io-pandas",
-    "tracing-zipkin",
-    "tracing-jaeger",
-    "tracing-otlp",
-]
+def containerize(bento_tag: Tag | str, **kwargs: t.Any) -> bool:
+    """
+    DEPRECATED: Use :meth:`bentoml.container.build` instead.
+    """
+    from .container import build
+
+    # Add backward compatibility for bentoml.bentos.containerize
+    logger.warning(
+        "'%s.containerize' is deprecated, use '%s.build' instead.",
+        __name__,
+        "bentoml.container",
+    )
+    if "docker_image_tag" in kwargs:
+        kwargs["image_tag"] = kwargs.pop("docker_image_tag", None)
+    if "labels" in kwargs:
+        kwargs["label"] = kwargs.pop("labels", None)
+    if "tags" in kwargs:
+        kwargs["tag"] = kwargs.pop("tags", None)
+    try:
+        build(bento_tag, **kwargs)
+        return True
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Failed to containerize %s: %s", bento_tag, e)
+        return False
 
 
 @inject
-def containerize(
-    bento_tag: Tag | str,
-    docker_image_tag: tuple[str] | None = None,
-    *,
-    # containerize options
-    features: t.Sequence[str] | None = None,
-    # docker options
-    add_host: dict[str, str] | None = None,
-    allow: t.List[str] | None = None,
-    build_args: dict[str, str] | None = None,
-    build_context: dict[str, str] | None = None,
-    builder: str | None = None,
-    cache_from: str | tuple[str] | dict[str, str] | None = None,
-    cache_to: str | tuple[str] | dict[str, str] | None = None,
-    cgroup_parent: str | None = None,
-    iidfile: PathType | None = None,
-    labels: dict[str, str] | None = None,
-    load: bool = True,
-    metadata_file: PathType | None = None,
-    network: str | None = None,
-    no_cache: bool = False,
-    no_cache_filter: tuple[str] | None = None,
-    output: str | dict[str, str] | None = None,
-    platform: str | tuple[str] | None = None,
-    progress: t.Literal["auto", "tty", "plain"] = "auto",
-    pull: bool = False,  # pylint: disable=W0621
-    push: bool = False,  # pylint: disable=W0621
-    quiet: bool = False,
-    secrets: str | tuple[str] | None = None,
-    shm_size: str | int | None = None,
-    rm: bool = False,
-    ssh: str | None = None,
-    target: str | None = None,
-    ulimit: str | None = None,
-    _bento_store: BentoStore = Provide[BentoMLContainer.bento_store],
-) -> bool:
+def serve(
+    bento: str | Tag | Bento,
+    server_type: str = "http",
+    reload: bool = False,
+    production: bool = False,
+    env: t.Literal["conda"] | None = None,
+    host: str | None = None,
+    port: int | None = None,
+    working_dir: str | None = None,
+    api_workers: int | None = Provide[BentoMLContainer.api_server_workers],
+    backlog: int = Provide[BentoMLContainer.api_server_config.backlog],
+    ssl_certfile: str | None = Provide[BentoMLContainer.ssl.certfile],
+    ssl_keyfile: str | None = Provide[BentoMLContainer.ssl.keyfile],
+    ssl_keyfile_password: str | None = Provide[BentoMLContainer.ssl.keyfile_password],
+    ssl_version: int | None = Provide[BentoMLContainer.ssl.version],
+    ssl_cert_reqs: int | None = Provide[BentoMLContainer.ssl.cert_reqs],
+    ssl_ca_certs: str | None = Provide[BentoMLContainer.ssl.ca_certs],
+    ssl_ciphers: str | None = Provide[BentoMLContainer.ssl.ciphers],
+    enable_reflection: bool = Provide[BentoMLContainer.grpc.reflection.enabled],
+    enable_channelz: bool = Provide[BentoMLContainer.grpc.channelz.enabled],
+    max_concurrent_streams: int
+    | None = Provide[BentoMLContainer.grpc.max_concurrent_streams],
+    grpc_protocol_version: str | None = None,
+) -> Server:
+    logger.warning(
+        "bentoml.serve and bentoml.bentos.serve are deprecated; use bentoml.Server instead."
+    )
 
-    import psutil
+    if server_type == "http":
+        from .server import HTTPServer
 
-    from bentoml._internal.utils import buildx
+        if host is None:
+            host = t.cast(str, BentoMLContainer.http.host.get())
+        if port is None:
+            port = t.cast(int, BentoMLContainer.http.port.get())
 
-    env = {"DOCKER_BUILDKIT": "1", "DOCKER_SCAN_SUGGEST": "false"}
-
-    bento = _bento_store.get(bento_tag)
-    if not docker_image_tag:
-        docker_image_tag = (str(bento.tag),)
-
-    logger.info("Building docker image for %s", bento.tag)
-    if platform and not psutil.LINUX and platform != "linux/amd64":
-        logger.warning(
-            'Current platform is set to "%s". To avoid issue, we recommend you to build the container with x86_64 (amd64): "bentoml containerize %s --platform linux/amd64"',
-            ",".join(platform),
-            str(bento.tag),
+        res = HTTPServer(
+            bento=bento,
+            reload=reload,
+            production=production,
+            env=env,
+            host=host,
+            port=port,
+            working_dir=working_dir,
+            api_workers=api_workers,
+            backlog=backlog,
+            ssl_certfile=ssl_certfile,
+            ssl_keyfile=ssl_keyfile,
+            ssl_keyfile_password=ssl_keyfile_password,
+            ssl_version=ssl_version,
+            ssl_cert_reqs=ssl_cert_reqs,
+            ssl_ca_certs=ssl_ca_certs,
+            ssl_ciphers=ssl_ciphers,
         )
-    run_buildx = partial(
-        buildx.build,
-        subprocess_env=env,
-        tags=docker_image_tag,
-        add_host=add_host,
-        allow=allow,
-        build_args=build_args,
-        build_context=build_context,
-        builder=builder,
-        cache_from=cache_from,
-        cache_to=cache_to,
-        cgroup_parent=cgroup_parent,
-        iidfile=iidfile,
-        labels=labels,
-        load=load,
-        metadata_file=metadata_file,
-        network=network,
-        no_cache=no_cache,
-        no_cache_filter=no_cache_filter,
-        output=output,
-        platform=platform,
-        progress=progress,
-        pull=pull,
-        push=push,
-        quiet=quiet,
-        secrets=secrets,
-        shm_size=shm_size,
-        rm=rm,
-        ssh=ssh,
-        target=target,
-        ulimit=ulimit,
-    )
-    clean_context = contextlib.ExitStack()
-    required = clean_context.enter_context(
-        construct_dockerfile(bento, features=features)
-    )
-    try:
-        build_path, dockerfile_path = required
-        run_buildx(cwd=build_path, file=dockerfile_path)
-        return True
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Failed building docker image: {e}")
-        return False
-    finally:
-        clean_context.close()
+    elif server_type == "grpc":
+        from .server import GrpcServer
 
+        if host is None:
+            host = t.cast(str, BentoMLContainer.grpc.host.get())
+        if port is None:
+            port = t.cast(int, BentoMLContainer.grpc.port.get())
 
-__all__ = [
-    "list",
-    "get",
-    "delete",
-    "import_bento",
-    "export_bento",
-    "push",
-    "pull",
-    "build",
-    "build_bentofile",
-    "containerize",
-]
+        res = GrpcServer(
+            bento=bento,
+            reload=reload,
+            production=production,
+            env=env,
+            host=host,
+            port=port,
+            working_dir=working_dir,
+            api_workers=api_workers,
+            backlog=backlog,
+            enable_reflection=enable_reflection,
+            enable_channelz=enable_channelz,
+            max_concurrent_streams=max_concurrent_streams,
+            grpc_protocol_version=grpc_protocol_version,
+        )
+    else:
+        raise BadInput(f"Unknown server type: '{server_type}'")
+
+    res.start()
+    return res

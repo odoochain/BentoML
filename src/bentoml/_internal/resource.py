@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import functools
+import logging
+import math
 import os
 import re
-import math
 import typing as t
-import logging
-import functools
 from abc import ABC
 from abc import abstractmethod
 
@@ -145,7 +145,7 @@ def query_cgroup_cpu_count() -> float:
                 cfs_period_us_file
             )
         except FileNotFoundError as err:
-            logger.warning(f"Caught exception while calculating CPU quota: {err}")
+            logger.warning("Caught exception while calculating CPU quota: %s", err)
     # reading from cpu.max for cgroup v2
     elif os.path.exists(cpu_max_file):
         try:
@@ -158,7 +158,7 @@ def query_cgroup_cpu_count() -> float:
                     # quota_str is "max" meaning the cpu quota is unset
                     quota = None
         except FileNotFoundError as err:
-            logger.warning(f"Caught exception while calculating CPU quota: {err}")
+            logger.warning("Caught exception while calculating CPU quota: %s", err)
     if quota is not None and quota < 0:
         quota = None
     elif quota == 0:
@@ -179,7 +179,7 @@ def query_os_cpu_count() -> int:
     cpu_count = os.cpu_count()
     if cpu_count is not None:
         return cpu_count
-    logger.warning("os.cpu_count() is NoneType")
+    logger.warning("Failed to determine CPU count, using 1 as default.")
     return 1
 
 
@@ -248,7 +248,7 @@ class NvidiaGpuResource(Resource[t.List[int]], resource_id="nvidia.com/gpu"):
             pynvml.nvmlInit()
             device_count = pynvml.nvmlDeviceGetCount()
             return list(range(device_count))
-        except (pynvml.nvml.NVMLError, OSError):
+        except (pynvml.NVMLError_LibraryNotFound, OSError):
             logger.debug("GPU not detected. Unable to initialize pynvml lib.")
             return []
         finally:

@@ -1,20 +1,25 @@
 from __future__ import annotations
 
+import logging
 import os
 import types
 import typing as t
+from typing import TYPE_CHECKING
 
 import pytest
 
 import bentoml
-from bentoml.exceptions import NotFound
 from bentoml._internal.models.model import ModelContext
 from bentoml._internal.models.model import ModelSignature
 from bentoml._internal.runner.runner import Runner
-from bentoml._internal.runner.strategy import DefaultStrategy
 from bentoml._internal.runner.runner_handle.local import LocalRunnerRef
+from bentoml._internal.runner.strategy import DefaultStrategy
+from bentoml.exceptions import NotFound
 
 from .models import FrameworkTestModel
+
+if TYPE_CHECKING:
+    from _pytest.logging import LogCaptureFixture
 
 
 @pytest.fixture(name="saved_model")
@@ -24,6 +29,53 @@ def fixture_saved_model(
     return framework.save_model(
         test_model.name, test_model.model, **test_model.save_kwargs
     )
+
+
+def test_backward_warnings(
+    framework: types.ModuleType,
+    test_model: FrameworkTestModel,
+    caplog: LogCaptureFixture,
+    saved_model: bentoml.Model,
+):
+    # We want to cover the cases where the user is using the old API
+    # and we want to make sure that the warning is raised.
+    if (
+        not hasattr(framework, "__test_backward_compatible__")
+        or framework.__test_backward_compatible__ is False
+    ):
+        pytest.skip(
+            "Module '%s' does not have a backward compatible warning."
+            % framework.__name__
+        )
+    if hasattr(framework, "save"):
+        with caplog.at_level(logging.WARNING):
+            framework.save(test_model.name, test_model.model)
+        assert (
+            f'The "{framework.__name__}.save" method is deprecated. Use "{framework.__name__}.save_model" instead.'
+            in caplog.text
+        )
+        caplog.clear()
+    if hasattr(framework, "load"):
+        with caplog.at_level(logging.WARNING):
+            framework.load(saved_model.tag)
+        assert (
+            f'The "{framework.__name__}.load" method is deprecated. Use "{framework.__name__}.load_model" instead.'
+            in caplog.text
+        )
+        caplog.clear()
+    if hasattr(framework, "load_runner"):
+        with caplog.at_level(logging.ERROR):
+            framework.load_runner(saved_model.tag, "asdf")
+            assert '"load_runner" arguments will be ignored.' in caplog.text
+            caplog.clear()
+
+        with caplog.at_level(logging.WARNING):
+            framework.load_runner(saved_model.tag)
+            assert (
+                f'The "{framework.__name__}.load_runner" method is deprecated. Use "{framework.__name__}.get("{saved_model.tag}").to_runner()" instead.'
+                in caplog.text
+            )
+            caplog.clear()
 
 
 def test_wrong_module_load_exc(framework: types.ModuleType):
@@ -153,6 +205,15 @@ def test_load(
     for configuration in test_model.configurations:
         model = framework.load_model(saved_model)
         configuration.check_model(model, {})
+        if test_model.model_method_caller:
+            for meth, inp in [
+                (m, _i) for m, i in configuration.test_inputs.items() for _i in i
+            ]:
+                inp.check_output(
+                    test_model.model_method_caller(
+                        test_model, meth, tuple(inp.input_args), inp.input_kwargs
+                    )
+                )
 
 
 def test_runnable(
@@ -172,9 +233,9 @@ def test_runner_batching(
     test_model: FrameworkTestModel,
     saved_model: bentoml.Model,
 ):
+    from bentoml._internal.runner.container import AutoContainer
     from bentoml._internal.runner.utils import Params
     from bentoml._internal.runner.utils import payload_paramss_to_batch_params
-    from bentoml._internal.runner.container import AutoContainer
 
     ran_tests = False
 
@@ -237,7 +298,7 @@ def test_runner_cpu_multi_threading(
         for meth, inputs in config.test_inputs.items():
             strategy = DefaultStrategy()
 
-            os.environ.update(strategy.get_worker_env(runnable, resource_cfg, 0))
+            os.environ.update(strategy.get_worker_env(runnable, resource_cfg, 1, 0))
 
             runner.init_local()
 
@@ -283,7 +344,7 @@ def test_runner_cpu(
         for meth, inputs in config.test_inputs.items():
             strategy = DefaultStrategy()
 
-            os.environ.update(strategy.get_worker_env(runnable, resource_cfg, 0))
+            os.environ.update(strategy.get_worker_env(runnable, resource_cfg, 1, 0))
 
             runner.init_local()
 
@@ -331,7 +392,7 @@ def test_runner_nvidia_gpu(
         for meth, inputs in config.test_inputs.items():
             strategy = DefaultStrategy()
 
-            os.environ.update(strategy.get_worker_env(runnable, resource_cfg, 0))
+            os.environ.update(strategy.get_worker_env(runnable, resource_cfg, 1, 0))
 
             runner.init_local()
 

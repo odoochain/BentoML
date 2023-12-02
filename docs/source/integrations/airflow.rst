@@ -26,12 +26,12 @@ A typical Airflow pipeline with a BentoML serving & deployment workflow look lik
 3. Perform feature extraction on training data set
 4. Train a new model using the training data set
 5. Perform model evaluation and validation
-6. :doc:`Save model with BentoML </concepts/model>`
-7. :ref:`Push saved model to Yatai registry (or export model to s3) <concepts/model:Managing Models>`
+6. :doc:`Save the model with BentoML </concepts/model>`
+7. :ref:`Push the saved model to BentoCloud (or export model to s3) <concepts/model:Manage models>`
 8. :doc:`Build a new Bento using the newly trained model </concepts/bento>`
 9. Run integration test on the Bento to verify the entire serving pipeline
-10. :ref:`Push the Bento to a Yatai (or export bento to s3) <concepts/bento:Managing Bentos>`
-11. (Optional) Trigger a redeployment via Yatai, bentoctl, or custom deploy script
+10. :ref:`Push the Bento to BentoCloud (or export bento to s3) <concepts/bento:Manage Bentos>`
+11. (Optional) Trigger a redeployment via BentoCloud or a custom deployment script
 
 
 Pro Tips
@@ -95,13 +95,13 @@ Artifact Management
 ~~~~~~~~~~~~~~~~~~~
 
 Since Airflow is a distributed system, it is important to save the
-:doc:`Models </concepts/model>` and :doc:`Bentos </concepts/bento>` produced in your
+:doc:`models </concepts/model>` and :doc:`Bentos </concepts/bento>` produced in your
 Airflow pipeline to a central location that is accessible by all the nodes in the
 Airflow cluster, and also by the workers in your production deployment environment.
 
 For a simple setup, we recommend using the Import/Export API for
-:ref:`Model <concepts/model:Managing Models>` and
-:ref:`Bento <concepts/bento:Managing Bentos>`. This allows you to export the model files
+:ref:`models <concepts/model:Manage models>` and
+:ref:`Bentos <concepts/bento:Manage Bentos>`. This allows you to export the model files
 directly to cloud storage, and import them from the same location when needed. E.g:
 
 .. code-block:: python
@@ -112,10 +112,8 @@ directly to cloud storage, and import them from the same location when needed. E
     bentoml.export_bento('s3://my_bucket/bentos/')
     bentoml.import_bento('s3://my_bucket/bentos/iris_classifier-7soszfq53sv6huqj.bento')
 
-For a more advanced setup, we recommend using the Model and Bento Registry feature
-provided in `Yatai <https://github.com/bentoml/Yatai>`_, which provides additional
-management features such as filtering, labels, and a web UI for browsing and managing
-models. E.g:
+For a more advanced setup, we recommend using the Model and Bento repositories provided in BentoCloud, which provides additional
+management features such as filtering, labels, and a web UI for browsing and managing models. E.g:
 
 .. code-block:: python
 
@@ -167,4 +165,3 @@ that demonstrates how to use BentoML with Airflow:
 
 * 📖 `Deploying BentoML using Airflow <https://medium.com/codex/deploying-bentoml-using-airflow-28972343ac68>`_
 * 💻 `Source Code <https://github.com/sdf94/bentoml-airflow>`_
-

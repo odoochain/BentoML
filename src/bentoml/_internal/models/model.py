@@ -1,55 +1,49 @@
 from __future__ import annotations
 
-import io
-import typing as t
-import logging
 import importlib
-from sys import version_info as pyver
-from types import ModuleType
-from typing import overload
-from typing import TYPE_CHECKING
+import io
+import logging
+import os
+import typing as t
 from datetime import datetime
 from datetime import timezone
+from sys import version_info as pyver
+from types import ModuleType
+from typing import TYPE_CHECKING
+from typing import overload
 
-import fs
 import attr
-import yaml
+import cloudpickle  # type: ignore (no cloudpickle types)
+import fs
 import fs.errors
 import fs.mirror
-import cloudpickle  # type: ignore (no cloudpickle types)
+import yaml
+from cattr.gen import make_dict_structure_fn
+from cattr.gen import make_dict_unstructure_fn
+from cattr.gen import override
 from fs.base import FS
-from cattr.gen import override  # type: ignore (incomplete cattr types)
-from cattr.gen import make_dict_structure_fn  # type: ignore (incomplete cattr types)
-from cattr.gen import make_dict_unstructure_fn  # type: ignore (incomplete cattr types)
-from simple_di import inject
 from simple_di import Provide
+from simple_di import inject
 
-from ..tag import Tag
+from ...exceptions import BentoMLException
+from ...exceptions import NotFound
+from ..configuration import BENTOML_VERSION
+from ..configuration.containers import BentoMLContainer
 from ..store import Store
 from ..store import StoreItem
+from ..tag import Tag
 from ..types import MetadataDict
+from ..types import ModelSignatureDict
 from ..utils import bentoml_cattr
 from ..utils import label_validator
 from ..utils import metadata_validator
-from ...exceptions import NotFound
-from ...exceptions import BentoMLException
-from ..configuration import BENTOML_VERSION
-from ..configuration.containers import BentoMLContainer
+from ..utils import normalize_labels_value
 
-if TYPE_CHECKING:
-    from ..types import AnyType
-    from ..types import PathType
-    from ..runner import Runner
+if t.TYPE_CHECKING:
     from ..runner import Runnable
-
-    class ModelSignatureDict(t.TypedDict, total=False):
-        batchable: bool
-        batch_dim: tuple[int, int] | int | None
-        input_spec: tuple[AnyType] | AnyType | None
-        output_spec: AnyType | None
-
-else:
-    ModelSignaturesDict = dict
+    from ..runner import Runner
+    from ..runner.strategy import Strategy
+    from ..types import PathType
 
 
 T = t.TypeVar("T")
@@ -68,6 +62,11 @@ class ModelOptions:
 
     def to_dict(self: ModelOptions) -> dict[str, t.Any]:
         return attr.asdict(self)
+
+
+@attr.define
+class PartialKwargsModelOptions(ModelOptions):
+    partial_kwargs: t.Dict[str, t.Any] = attr.field(factory=dict)
 
 
 @attr.define(repr=False, eq=False, init=False)
@@ -93,7 +92,7 @@ class Model(StoreItem):
     ):
         if not _internal:
             raise BentoMLException(
-                "Model cannot be instantiated directly directly; use bentoml.<framework>.save or bentoml.models.get instead"
+                "Model cannot be instantiated directly; use bentoml.<framework>.save or bentoml.models.get instead"
             )
 
         self.__attrs_init__(tag, model_fs, info, custom_objects)  # type: ignore (no types for attrs init)
@@ -138,7 +137,7 @@ class Model(StoreItem):
     @classmethod
     def create(
         cls,
-        name: str,
+        name: Tag | str,
         *,
         module: str,
         api_version: str,
@@ -172,7 +171,7 @@ class Model(StoreItem):
         Returns:
             object: Model instance created in temporary filesystem
         """
-        tag = Tag.from_str(name)
+        tag = Tag.from_taglike(name)
         if tag.version is None:
             tag = tag.make_new_version()
         labels = {} if labels is None else labels
@@ -200,17 +199,13 @@ class Model(StoreItem):
 
     @inject
     def save(
-        self, model_store: ModelStore = Provide[BentoMLContainer.model_store]
+        self,
+        model_store: ModelStore = Provide[BentoMLContainer.model_store],
     ) -> Model:
-        self._save(model_store)
-
-        logger.info(f"Successfully saved {self}")
-        return self
-
-    def _save(self, model_store: ModelStore) -> Model:
-        if not self.validate():
-            logger.warning(f"Failed to create Model for {self.tag}, not saving.")
-            raise BentoMLException("Failed to save Model because it was invalid")
+        try:
+            self.validate()
+        except BentoMLException as e:
+            raise BentoMLException(f"Failed to save {self!s}: {e}") from None
 
         with model_store.register(self.tag) as model_path:
             out_fs = fs.open_fs(model_path, create=True, writeable=True)
@@ -231,19 +226,12 @@ class Model(StoreItem):
             )
 
         res = Model(tag=info.tag, model_fs=item_fs, info=info, _internal=True)
-        if not res.validate():
-            raise BentoMLException(
-                f"Failed to load bento model because it contains an invalid '{MODEL_YAML_FILENAME}'"
-            )
+        try:
+            res.validate()
+        except BentoMLException as e:
+            raise BentoMLException(f"Failed to load {res!s}: {e}") from None
 
         return res
-
-    @property
-    def path(self) -> str:
-        return self.path_of("/")
-
-    def path_of(self, item: str) -> str:
-        return self._fs.getsyspath(item)
 
     @classmethod
     def enter_cloudpickle_context(
@@ -308,7 +296,10 @@ class Model(StoreItem):
         return self.info.creation_time
 
     def validate(self):
-        return self._fs.isfile(MODEL_YAML_FILENAME)
+        if not self._fs.isfile(MODEL_YAML_FILENAME):
+            raise BentoMLException(
+                f"{self!s} does not contain a {MODEL_YAML_FILENAME}."
+            )
 
     def __str__(self):
         return f'Model(tag="{self.tag}")'
@@ -322,6 +313,8 @@ class Model(StoreItem):
         max_batch_size: int | None = None,
         max_latency_ms: int | None = None,
         method_configs: dict[str, dict[str, int]] | None = None,
+        embedded: bool = False,
+        scheduling_strategy: type[Strategy] | None = None,
     ) -> Runner:
         """
         TODO(chaoyu): add docstring
@@ -336,6 +329,18 @@ class Model(StoreItem):
 
         """
         from ..runner import Runner
+        from ..runner.strategy import DefaultStrategy
+
+        if scheduling_strategy is None:
+            scheduling_strategy = DefaultStrategy
+
+        # TODO: @larme @yetone run this branch only yatai version is incompatible with embedded runner
+        yatai_version = os.environ.get("YATAI_T_VERSION")
+        if embedded and yatai_version:
+            logger.warning(
+                f"Yatai of version {yatai_version} is incompatible with embedded runner, set `embedded=False` for runner {name}"
+            )
+            embedded = False
 
         return Runner(
             self.to_runnable(),
@@ -344,12 +349,28 @@ class Model(StoreItem):
             max_batch_size=max_batch_size,
             max_latency_ms=max_latency_ms,
             method_configs=method_configs,
+            embedded=embedded,
+            scheduling_strategy=scheduling_strategy,
         )
 
     def to_runnable(self) -> t.Type[Runnable]:
         if self._runnable is None:
             self._runnable = self.info.imported_module.get_runnable(self)
         return self._runnable
+
+    def load_model(self, *args: t.Any, **kwargs: t.Any) -> t.Any:
+        """
+        Load the model into memory from the model store directory.
+        This is a shortcut to the ``load_model`` function defined in the framework module
+        used for saving the target model.
+
+        For example, if the ``BentoModel`` is saved with
+        ``bentoml.tensorflow.save_model``, this method will pass it to the
+        ``bentoml.tensorflow.load_model`` method, along with any additional arguments.
+        """
+        if self._model is None:
+            self._model = self.info.imported_module.load_model(self, *args, **kwargs)
+        return self._model
 
     def with_options(self, **kwargs: t.Any) -> Model:
         res = Model(
@@ -490,9 +511,8 @@ bentoml_cattr.register_unstructure_hook(
 )
 
 
-@attr.define(repr=False, eq=False, frozen=True)
+@attr.define(repr=False, eq=False, frozen=True, init=False)
 class ModelInfo:
-
     # for backward compatibility in case new fields are added to BentoInfo.
     __forbid_extra_keys__ = False
     # omit field in yaml file if it is not provided by the user.
@@ -502,7 +522,9 @@ class ModelInfo:
     name: str
     version: str
     module: str
-    labels: t.Dict[str, str] = attr.field(validator=label_validator)
+    labels: t.Dict[str, str] = attr.field(
+        validator=label_validator, converter=normalize_labels_value
+    )
     _options: t.Dict[str, t.Any]
     metadata: MetadataDict = attr.field(validator=metadata_validator, converter=dict)
     context: ModelContext = attr.field()
@@ -610,7 +632,7 @@ class ModelInfo:
         return self._cached_options
 
     def to_dict(self) -> t.Dict[str, t.Any]:
-        return bentoml_cattr.unstructure(self)  # type: ignore (incomplete cattr types)
+        return bentoml_cattr.unstructure(self)
 
     @overload
     def dump(self, stream: io.StringIO) -> io.BytesIO:
@@ -671,9 +693,9 @@ bentoml_cattr.register_structure_hook_func(
     ),
 )
 bentoml_cattr.register_unstructure_hook_func(
-    lambda cls: issubclass(cls, ModelInfo),  # type: ignore (lambda)
+    lambda cls: issubclass(cls, ModelInfo),
     # Ignore tag, tag is saved via the name and version field
-    make_dict_unstructure_fn(  # type: ignore (incomplete cattr types)
+    make_dict_unstructure_fn(
         ModelInfo,
         bentoml_cattr,
         tag=override(omit=True),

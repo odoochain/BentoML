@@ -7,7 +7,7 @@ BentoML provides native support for serving and deploying models trained from Py
 Preface
 -------
 
-If you have already compiled your PyTorch model to TorchScript, you might consider to use :doc:`bentoml.torchscript </reference/frameworks/torchscript>`. BentoML provides first-class support for TorchScript, hence using ``bentoml.torchscript`` is less prone to compatibility issues during production.
+If you have already compiled your PyTorch model to TorchScript, you should consider using BentoML's first-class module :doc:`bentoml.torchscript </reference/frameworks/torchscript>` instead, as it is less likely to cause compatibility issues during production.
 
 .. note::
 
@@ -21,7 +21,7 @@ For common PyTorch models with single input:
 
 .. code-block:: python
     :caption: `train.py`
-    
+
     import bentoml
     import torch
     import torch.nn as nn
@@ -94,10 +94,10 @@ For common PyTorch models with single input:
             # print statistics
             print('Epoch: %d, Step: %d, Loss: %.4f' % (epoch, i, loss.item()))
 
-    bentoml.pytorch.save(
-        model,
+    bentoml.pytorch.save_model(
         "my_torch_model",
-        signatures={"__call__": {"batchable": True, "batchdim": 0}},
+        model,
+        signatures={"__call__": {"batchable": True, "batch_dim": 0}},
     )
 
 
@@ -123,31 +123,46 @@ For common PyTorch models with single input:
     model = Net()
     ... # training
 
-    bentoml.pytorch.save(
-        model,
+    bentoml.pytorch.save_model(
         "my_torch_model",
-        signatures={"__call__": {"batchable": True, "batchdim": 0}},
+        model,
+        signatures={"__call__": {"batchable": True, "batch_dim": 0}},
     )
 
 .. note::
 
-    :bdg-info:`Remarks:` All of the external python modules/util functions that the model
-    requires must be included in the project. The PyTorch framework requires them to restore
-    the model.
+    :bdg-info:`Remarks:` External python classes or utility functions required by the model must be referenced in ``<module>.<class>`` format, and such modules should be passed to ``bentoml.pytorch.save_model`` via ``external_modules``. For example:
+
+    .. code-block:: python
+       :caption: `train.py`
+       :emphasize-lines: 1,8
+
+       import my_models
+
+       model = my_models.MyModel()
+       bentoml.pytorch.save_model(
+           "my_torch_model",
+           model,
+           signatures={"__call__": {"batchable": True, "batch_dim": 0}},
+           external_modules=[my_models],
+       )
+
+    This is due to a limitation from PyTorch model serialisation, where PyTorch requires the model's source code to restore it.
+
+    A better practice is to compile your model to `TorchScript <https://pytorch.org/docs/stable/jit.html>`_ format.
 
 .. note::
 
     :code:`bentoml.pytorch.save_model` has parameter ``signatures``.
-    The ``signatures`` argument of type :ref:`Model Signatures <concepts/model:Model Signatures>` in :obj:`bentoml.pytorch.save_model` is used to determine which methods will be used for inference and exposed in the Runner. The signatures dictionary will then be used during the creation process of a Runner instance.
+    The ``signatures`` argument of type :ref:`concepts/model:Model signatures` in :obj:`bentoml.pytorch.save_model` is used to determine which methods will be used for inference and exposed in the Runner. The signatures dictionary will then be used during the creation process of a Runner instance.
 
-The signatures used for creating a Runner is ``{"__call__": {"batchable": False}}``. This means by default, BentoML’s `Adaptive Batching <guides/batching:Adaptive Batching>`_ is disabled when using :obj:`~bentoml.pytorch.save_model()`. If you want to utilize adaptive batching behavior and know your model's dynamic batching dimension, make sure to pass in ``signatures`` as follow: 
+The signatures used for creating a Runner is ``{"__call__": {"batchable": False}}``. This means by default, BentoML's :doc:`/guides/batching` is disabled when using :obj:`~bentoml.pytorch.save_model()`. If you want to utilize adaptive batching behavior and know your model's dynamic batching dimension, make sure to pass in ``signatures`` as follow:
 
 
 
 .. code-block:: python
 
-    bentoml.pytorch.save(model, "my_model", signatures={"__call__": {"batch_dim": 0, "batchable": True}})
-
+    bentoml.pytorch.save_model("my_model", model, signatures={"__call__": {"batch_dim": 0, "batchable": True}})
 
 
 Building a Service
@@ -178,8 +193,8 @@ Create a BentoML service with the previously saved `my_torch_model` pipeline usi
 Adaptive Batching
 -----------------
 
-Most PyTorch models can accept batched data as input. If batched interence is supported, it is recommended to enable batching to take advantage of 
-the adaptive batching capability to improve the throughput and efficiency of the model. Enable adaptive batching by overriding the :code:`signatures` 
+Most PyTorch models can accept batched data as input. If batched interence is supported, it is recommended to enable batching to take advantage of
+the adaptive batching capability to improve the throughput and efficiency of the model. Enable adaptive batching by overriding the :code:`signatures`
 argument with the method name and providing :code:`batchable` and :code:`batch_dim` configurations when saving the model to the model store.
 
 .. seealso::
@@ -189,6 +204,6 @@ argument with the method name and providing :code:`batchable` and :code:`batch_d
 
 .. note::
 
-   You can find more examples for **PyTorch** in our `bentoml/examples <https://github.com/bentoml/BentoML/tree/main/examples>`_ directory.
+   You can find more examples for **PyTorch** in our :examples:`bentoml/examples <>` directory.
 
 .. currentmodule:: bentoml.pytorch

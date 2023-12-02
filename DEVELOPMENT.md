@@ -1,6 +1,6 @@
 # Developer Guide
 
-Before getting started, check out the `#bentoml-contributors` channel in the [BentoML community slack](https://l.linklyhq.com/l/ktOh).
+Before getting started, check out the `#bentoml-contributors` channel in the [BentoML community slack](https://l.bentoml.com/join-slack).
 
 If you are interested in contributing to existing issues and feature requets, check out the [good-first-issue](https://github.com/bentoml/BentoML/issues?q=is%3Aopen+is%3Aissue+label%3Agood-first-issue) and [help-wanted](https://github.com/bentoml/BentoML/issues?q=is%3Aopen+is%3Aissue+label%3Ahelp-wanted) issues list.
 
@@ -10,10 +10,15 @@ If you are interested in proposing a new feature, make sure to create a new feat
 
 <details><summary><h3>with the Command Line</h3></summary>
 
-1. Make sure to have [Git](https://git-scm.com/), [pip](https://pip.pypa.io/en/stable/installation/), and [Python3.7+](https://www.python.org/downloads/) installed.
+1. Make sure to have [Git](https://git-scm.com/),
+   [pip](https://pip.pypa.io/en/stable/installation/),
+   [Python3.8+](https://www.python.org/downloads/), and
+   [PDM](https://pdm.fming.dev/latest/) installed.
 
-   Optionally, make sure to have [GNU Make](https://www.gnu.org/software/make/) available on your system if you aren't using a UNIX-based system for a better developer experience.
-   If you don't want to use `make` then please refer to the [Makefile](./Makefile) for specific commands on a given make target.
+   Optionally, make sure to have [GNU Make](https://www.gnu.org/software/make/)
+   available on your system if you aren't using a UNIX-based system for a better
+   developer experience. If you don't want to use `make` then please refer to
+   the [Makefile](./Makefile) for specific commands on a given make target.
 
 2. Fork the BentoML project on [GitHub](https://github.com/bentoml/BentoML).
 
@@ -33,24 +38,25 @@ If you are interested in proposing a new feature, make sure to create a new feat
 
    ```bash
    git switch main # ensure you're on the main branch
+   git fetch upstream --tags
    git branch --set-upstream-to=upstream/main
    ```
 
-6. Install BentoML with pip in editable mode:
+6. Install BentoML in editable and all development dependencies:
 
    ```bash
-   pip install -e .
+   pdm install -G all
+   pre-commit install
    ```
 
-   This installs BentoML in an editable state. The changes you make will automatically be reflected without reinstalling BentoML.
+   This installs BentoML with editable mode via `pdm` and development
+   dependencies in a isolated environment. If you wish not to setup within an
+   isolated environment, pass `--no-isolation` to pdm
 
-7. Install the BentoML development requirements:
+   > **Note**: Make sure to prepend `pdm run` to all commands within this guide
+   > if you are using isolated environment via `pdm`.
 
-   ```bash
-   pip install -r ./requirements/dev-requirements.txt
-   ```
-
-8. Test the BentoML installation either with `bash`:
+7. Test the BentoML installation either with `bash`:
 
    ```bash
    bentoml --version
@@ -69,7 +75,7 @@ If you are interested in proposing a new feature, make sure to create a new feat
 
 1. Confirm that you have the following installed:
 
-   - [Python3.7+](https://www.python.org/downloads/)
+   - [Python3.8+](https://www.python.org/downloads/)
    - VS Code with the [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) and [Pylance](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance) extensions
 
 2. Fork the BentoML project on [GitHub](https://github.com/bentoml/BentoML).
@@ -208,23 +214,17 @@ bentoml get IrisClassifier --verbose
 
 ## Style check, auto-formatting, type-checking
 
-formatter: [black](https://github.com/psf/black), [isort](https://github.com/PyCQA/isort), [buf](https://github.com/bufbuild/buf)
-
-linter: [pylint](https://pylint.org/), [buf](https://github.com/bufbuild/buf)
-
-type checker: [pyright](https://github.com/microsoft/pyright)
-
-We are using [buf](https://github.com/bufbuild/buf) for formatting and linting
-of our proto files. Configuration can be found [here](./bentoml/grpc/buf.yaml).
-Currently, we are running `buf` with docker, hence we kindly ask our developers
-to have docker available. Docker installation can be found [here](https://docs.docker.com/get-docker/).
+We are using [pre-commit](https://pre-commit.com/) to manage our hooks, and
+[buf](https://github.com/bufbuild/buf) for formatting and linting of our proto
+files. Configuration can be found [here](./bentoml/grpc/buf.yaml). Currently, we
+are running `buf` with docker, hence we kindly ask our developers to have docker
+available. Docker installation can be found
+[here](https://docs.docker.com/get-docker/).
 
 Run linter/format script:
 
 ```bash
-make format
-
-make lint
+pre-commit run --all-files
 ```
 
 Run type checker:
@@ -242,13 +242,12 @@ regenerate the proto stubs.
 
 ## Deploy with your changes
 
-Test test out your changes in an actual BentoML model deployment, you can create a new Bento with your custom BentoML source repo:
+Test out your changes in an actual BentoML model deployment, you can create a new Bento with your custom BentoML source repo:
 
 1. Install custom BentoML in editable mode. e.g.:
    - git clone your bentoml fork
    - `pip install -e PATH_TO_THE_FORK`
-2. Set env var `export BENTOML_BUNDLE_LOCAL_BUILD=True` and `export SETUPTOOLS_USE_DISTUTILS=stdlib`
-   - make sure you have the latest setuptools installed: `pip install -U setuptools`
+2. Set env var `export BENTOML_BUNDLE_LOCAL_BUILD=True`
 3. Build a new Bento with `bentoml build` in your project directory
 4. The new Bento will include a wheel file built from the BentoML source, and
    `bentoml containerize` will install it to override the default BentoML installation in base image
@@ -283,7 +282,7 @@ docker:
 Make sure to install all test dependencies:
 
 ```bash
-pip install -r requirements/tests-requirements.txt
+pdm install -G testing -G grpc -G io
 ```
 
 BentoML tests come with a Pytest plugin. Export `PYTEST_PLUGINS`:
@@ -292,48 +291,10 @@ BentoML tests come with a Pytest plugin. Export `PYTEST_PLUGINS`:
 export PYTEST_PLUGINS=bentoml.testing.pytest.plugin
 ```
 
-### Unit tests
-
-You can run unit tests in two ways:
-
-Run all unit tests directly with pytest:
+To run all tests with PDM, do the following:
 
 ```bash
-# GIT_ROOT=$(git rev-parse --show-toplevel)
-pytest tests/unit --cov=bentoml --cov-config="$GIT_ROOT"/pyproject.toml
-```
-
-Run all unit tests via `./scripts/ci/run_tests.sh`:
-
-```bash
-./scripts/ci/run_tests.sh unit
-
-# Or on UNIX-based system
-make tests-unit
-```
-
-### Integration tests
-
-Run given tests after defining a target under `scripts/ci/config.yml` with `run_tests.sh`:
-
-```bash
-# example: run Keras TF1 integration tests
-./scripts/ci/run_tests.sh keras_tf1
-```
-
-### E2E tests
-
-```bash
-# example: run e2e tests to check for http general features
-./scripts/ci/run_tests.sh http_server
-```
-
-### Running the whole suite
-
-To run the whole test suite, minus frameworks integration, you can use:
-
-```bash
-make tests-suite
+pdm run all
 ```
 
 ### Adding new test suite
@@ -342,75 +303,7 @@ If you are adding new ML framework support, it is recommended that you also add 
 
 We recommend using [`nektos/act`](https://github.com/nektos/act) to run and test Actions locally.
 
-The following tests script [run_tests.sh](./scripts/ci/run_tests.sh) can be used to run tests locally.
-
-```bash
-./scripts/ci/run_tests.sh -h
-Running unit/integration tests with pytest and generate coverage reports. Make sure that given testcases is defined under ./scripts/ci/config.yml.
-
-Usage:
-  ./scripts/ci/run_tests.sh [-h|--help] [-v|--verbose] <target> <pytest_additional_arguments>
-
-Flags:
-  -h, --help            show this message
-  -v, --verbose         set verbose scripts
-
-
-If `pytest_additional_arguments` is given, the additional arguments will be passed to all of the tests run by the tests script.
-
-Example:
-  $ ./scripts/ci/run_tests.sh pytorch --run-gpus-tests --capture=tee-sys
-```
-
-All tests are then defined under [config.yml](./scripts/ci/config.yml) where each field follows the following format:
-
-```yaml
-<target>: &tmpl
-  root_test_dir: "tests/integration/frameworks"
-  is_dir: false
-  override_name_or_path:
-  dependencies: []
-  external_scripts:
-  type_tests: "integration"
-```
-
-By default, each of our frameworks tests files with the format: `test_<frameworks>_impl.py`. If `is_dir` set to `true` we will try to match the given `<target>` under `root_test_dir` to run tests from.
-
-| Keys                    | Type                                    | Defintions                                                                                       |
-| ----------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `root_test_dir`         | `<str>`                                 | root directory to run a given tests                                                              |
-| `is_dir`                | `<bool>`                                | whether `target` is a directory instead of a file                                                |
-| `override_name_or_path` | `<str>`                                 | optional way to override a tests file name if doesn't match our convention                       |
-| `dependencies`          | `<List[str]>`                           | define additional dependencies required to run the tests, accepts `requirements.txt` format      |
-| `external_scripts`      | `<str>`                                 | optional shell scripts that can be run on top of `./scripts/ci/run_tests.sh` for given testsuite |
-| `type_tests`            | `<Literal["e2e","unit","integration"]>` | define type of tests for given `target`                                                          |
-
-When `type_tests` is set to `e2e`, `./scripts/ci/run_tests.sh` will change current directory into the given `root_test_dir`, and will run the testsuite from there.
-
-The reason why we encourage developers to use the scripts in CI is that under the hood when we use pytest, we will create a custom report for the given tests. This report can then be used as carryforward flags on codecov for consistent reporting.
-
-Example:
-
-```yaml
-# e2e tests
-http:
-  root_test_dir: "tests/e2e/bento_server_http"
-  is_dir: true
-  type_tests: "e2e"
-  dependencies:
-    - "Pillow"
-
-# framework
-pytorch_lightning:
-  <<: *tmpl
-  dependencies:
-    - "pytorch-lightning"
-    - "-f https://download.pytorch.org/whl/torch_stable.html"
-    - "torch==1.9.0+cpu"
-    - "torchvision==0.10.0+cpu"
-```
-
-Refer to [config.yml](./scripts/ci/config.yml) for more examples.
+Add a new job for your new framework under [framework.yml](./.github/workflows/frameworks.yml)
 
 ## Python tools ecosystem
 
@@ -419,14 +312,6 @@ Currently, BentoML is [PEP518](https://www.python.org/dev/peps/pep-0518/) compat
 ## Benchmark
 
 BentoML has moved its benchmark to [`bentoml/benchmark`](https://github.com/bentoml/benchmark).
-
-## Optional: git hooks
-
-BentoML also provides git hooks that developers can install with:
-
-```bash
-make hooks
-```
 
 ## Creating Pull Requests on GitHub
 

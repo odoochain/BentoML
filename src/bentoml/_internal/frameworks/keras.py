@@ -1,43 +1,41 @@
 from __future__ import annotations
 
-import typing as t
-import logging
 import functools
+import logging
+import typing as t
 from types import ModuleType
 from typing import TYPE_CHECKING
 
 import attr
 
 import bentoml
-from bentoml import Tag
 from bentoml import Runnable
-from bentoml.models import ModelContext
-from bentoml.models import ModelOptions
-from bentoml.exceptions import NotFound
+from bentoml import Tag
 from bentoml.exceptions import MissingDependencyException
+from bentoml.exceptions import NotFound
+from bentoml.models import ModelContext
 
-from ..types import LazyType
 from ..models.model import ModelSignature
+from ..models.model import PartialKwargsModelOptions
 from ..runner.utils import Params
-from ..utils.tensorflow import get_tf_version
+from ..types import LazyType
+from .utils.tensorflow import get_tf_version
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:  # pragma: no cover
     from .. import external_typing as ext
-    from ..models.model import ModelSignatureDict
     from ..external_typing import tensorflow as tf_ext
+    from ..models.model import ModelSignatureDict
 
     KerasArgType = t.Union[t.List[t.Union[int, float]], ext.NpNDArray, tf_ext.Tensor]
 
 try:
+    import keras
     import tensorflow as tf
-    import tensorflow.keras as keras
 except ImportError:  # pragma: no cover
     raise MissingDependencyException(
-        "Tensorflow is required in order to use module `bentoml.keras`, since BentoML "
-        "uses Tensorflow as Keras backend. Install Tensorflow with `pip install "
-        "tensorflow`. For more information, refer to https://www.tensorflow.org/install"
+        "Tensorflow is required in order to use module 'bentoml.keras', since BentoML uses Tensorflow as Keras backend. Install Tensorflow with 'pip install tensorflow'. For more information, refer to https://www.tensorflow.org/install"
     )
 
 MODULE_NAME = "bentoml.keras"
@@ -45,11 +43,10 @@ API_VERSION = "v1"
 
 
 @attr.define
-class KerasOptions(ModelOptions):
+class KerasOptions(PartialKwargsModelOptions):
     """Options for the Keras model."""
 
     include_optimizer: bool = False
-    partial_kwargs: t.Dict[str, t.Any] = attr.field(factory=dict)
 
 
 def get(tag_like: str | Tag) -> bentoml.Model:
@@ -133,7 +130,7 @@ def load_model(
 
 
 def save_model(
-    name: str,
+    name: Tag | str,
     model: "tf_ext.KerasModel",
     *,
     tf_signatures: "tf_ext.ConcreteFunction" | None = None,
@@ -151,32 +148,21 @@ def save_model(
     Save a model instance to BentoML modelstore.
 
     Args:
-        name (:code:`str`):
-            Name for given model instance. This should pass Python identifier check.
-        model (:obj:`tensorflow.keras.Model` | :obj:`tensorflow.keras.engine.sequential.Sequential`):
-            Instance of the Keras model to be saved to BentoML modelstore.
-        tf_signatures (:code:`Union[Callable[..., Any], dict]`, `optional`, default to :code:`None`):
-            Refers to `Signatures explanation <https://www.tensorflow.org/api_docs/python/tf/saved_model/save>`_
-            from Tensorflow documentation for more information.
-        tf_save_options (`tf.saved_model.SaveOptions`, `optional`, default to :code:`None`):
-            :obj:`tf.saved_model.SaveOptions` object that specifies options for saving.
-        signatures (:code: `Dict[str, bool | BatchDimType | AnyType | tuple[AnyType]]`)
-            Methods to expose for running inference on the target model. Signatures are
-             used for creating Runner instances when serving model with bentoml.Service
-        labels (:code:`Dict[str, str]`, `optional`, default to :code:`None`):
-            user-defined labels for managing models, e.g. team=nlp, stage=dev
-        custom_objects (:code:`Dict[str, Any]`, `optional`, default to :code:`None`):
-            Dictionary of Keras custom objects, if specified.
-        external_modules (:code:`List[ModuleType]`, `optional`, default to :code:`None`):
-            user-defined additional python modules to be saved alongside the model or custom objects,
-            e.g. a tokenizer module, preprocessor module, model configuration module
-        metadata (:code:`Dict[str, Any]`, `optional`, default to :code:`None`):
-            Custom metadata for given model.
+        name: Name for given model instance. This should pass Python identifier check.
+        model: Instance of the Keras model to be saved to BentoML model store.
+        tf_signatures: Refer to `Signatures explanation <https://www.tensorflow.org/api_docs/python/tf/saved_model/save>`_
+                       from Tensorflow documentation for more information.
+        tf_save_options: :obj:`tf.saved_model.SaveOptions` object that specifies options for saving.
+        signatures: Methods to expose for running inference on the target model. Signatures
+                    are used for creating Runner instances when serving model with bentoml.Service
+        labels: user-defined labels for managing models, e.g. team=nlp, stage=dev
+        custom_objects: Dictionary of Keras custom objects, if specified.
+        external_modules: user-defined additional python modules to be saved alongside the model or custom objects,
+                          e.g. a tokenizer module, preprocessor module, model configuration module
+        metadata: Custom metadata for given model.
 
     Returns:
-
-        :obj:`~bentoml.Model`: A BentoML model containing the saved
-        Keras model instance.
+        :obj:`~bentoml.Model`: A BentoML model containing the saved Keras model instance.
 
     Examples:
 
@@ -235,14 +221,13 @@ def save_model(
             "custom_activation": custom_activation,
         },
         custom_bento_model = bentoml.keras.save_model("custom_obj_keras", custom_objects=custom_objects)
-
-    """  # noqa
+    """
 
     if not isinstance(
         model,
         (
-            LazyType("tensorflow.keras.Model"),
-            LazyType("tensorflow.keras.sequential", "Sequential"),
+            t.cast("t.Type[keras.Model]", LazyType("keras.Model")),
+            t.cast("t.Type[keras.Sequential]", LazyType("keras.Sequential")),
         ),
     ):
         raise TypeError(
@@ -259,8 +244,11 @@ def save_model(
                 "batchable": False,
             }
         }
-
-        logger.info(f"Using the default model signature {signatures} for Keras models.")
+        logger.info(
+            'Using the default model signature for Keras (%s) for model "%s".',
+            signatures,
+            name,
+        )
 
     options = KerasOptions(include_optimizer=include_optimizer)
 
@@ -276,7 +264,6 @@ def save_model(
         metadata=metadata,
         signatures=signatures,
     ) as bento_model:
-
         model.save(
             bento_model.path,
             signatures=tf_signatures,
@@ -328,7 +315,6 @@ def get_runnable(
         def _run_method(
             runnable_self: KerasRunnable, *args: "KerasArgType"
         ) -> "ext.NpNDArray" | t.Tuple["ext.NpNDArray", ...]:
-
             params = Params["KerasArgType"](*args)
 
             with tf.device(runnable_self.device_name):

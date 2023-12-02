@@ -3,16 +3,16 @@ from __future__ import annotations
 import typing as t
 from typing import TYPE_CHECKING
 
-from sklearn import metrics
 from catboost import CatBoostClassifier
+from sklearn import metrics
 from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 
 import bentoml
 
 from . import FrameworkTestModel
-from . import FrameworkTestModelInput as Input
 from . import FrameworkTestModelConfiguration as Config
+from . import FrameworkTestModelInput as Input
 
 if TYPE_CHECKING:
     import bentoml._internal.external_typing as ext
@@ -20,18 +20,22 @@ if TYPE_CHECKING:
 
 framework = bentoml.catboost
 
+backward_compatible = False
 
-def accurate_to(expected, accuracy: float) -> t.Callable[[ext.NpNdArray], bool]:
-    def check(out):
+
+def accurate_to(
+    expected: list[int], accuracy: float
+) -> t.Callable[[ext.NpNDArray], t.Any]:
+    def check(out: ext.NpNDArray) -> t.Any:
         return metrics.accuracy_score(expected, out) >= accuracy
 
     return check
 
 
 def generator_accurate_to(
-    expected, accuracy: float
-) -> t.Callable[[ext.NpNdArray], bool]:
-    def check(out):
+    expected: list[int], accuracy: float
+) -> t.Callable[[ext.NpNDArray], t.Any]:
+    def check(out: ext.NpNDArray) -> t.Any:
         score = metrics.accuracy_score(expected, next(out))
         return score >= accuracy
 

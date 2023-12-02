@@ -1,16 +1,16 @@
 from __future__ import annotations
 
+import inspect
 import re
 import typing as t
-import inspect
-from typing import Optional
 
 import yaml
 
-from ..types import is_compatible_type
-from ..context import InferenceApiContext as Context
 from ...exceptions import InvalidArgument
+from ..context import ServiceContext as Context
 from ..io_descriptors import IODescriptor
+from ..io_descriptors.base import IOType
+from ..types import is_compatible_type
 
 RESERVED_API_NAMES = [
     "index",
@@ -23,102 +23,122 @@ RESERVED_API_NAMES = [
 ]
 
 
-class InferenceAPI:
+class InferenceAPI(t.Generic[IOType]):
     def __init__(
         self,
-        user_defined_callback: t.Callable[..., t.Any],
-        input_descriptor: IODescriptor[t.Any],
-        output_descriptor: IODescriptor[t.Any],
-        name: Optional[str],
-        doc: Optional[str] = None,
-        route: Optional[str] = None,
+        user_defined_callback: t.Callable[..., t.Any] | None,
+        input_descriptor: IODescriptor[IOType],
+        output_descriptor: IODescriptor[IOType],
+        name: str | None,
+        doc: str | None = None,
+        route: str | None = None,
     ):
-        # Use user_defined_callback function variable if name not specified
-        name = user_defined_callback.__name__ if name is None else name
-        # Use user_defined_callback function docstring `__doc__` if doc not specified
-        doc = user_defined_callback.__doc__ if doc is None else doc
+        if user_defined_callback is not None:
+            # Use user_defined_callback function variable if name not specified
+            name = user_defined_callback.__name__ if name is None else name
+            # Use user_defined_callback function docstring `__doc__` if doc not specified
+            doc = user_defined_callback.__doc__ if doc is None else doc
+        else:
+            name = "" if name is None else name
+            doc = "" if doc is None else doc
+
         # Use API name as route if route not specified
         route = name if route is None else route
 
-        InferenceAPI._validate_name(name)
-        InferenceAPI._validate_route(route)
-
-        self.name = name
         self.needs_ctx = False
         self.ctx_param = None
-        self.func = user_defined_callback
         input_type = input_descriptor.input_type()
-        self.multi_input = isinstance(input_type, dict)
-        sig = inspect.signature(user_defined_callback)
 
-        if len(sig.parameters) == 0:
-            raise ValueError("Expected API function to take parameters.")
+        if user_defined_callback is not None:
+            InferenceAPI._validate_name(name)
+            InferenceAPI._validate_route(route)
 
-        if isinstance(input_type, dict):
-            # note: in python 3.6 kwarg order was not guaranteed to be preserved,
-            #       though it is in practice.
-            for key in sig.parameters:
-                if key not in input_type:
+            sig = inspect.signature(user_defined_callback)
+
+            if len(sig.parameters) == 0:
+                raise ValueError("Expected API function to take parameters.")
+
+            if isinstance(input_type, dict):
+                # note: in python 3.6 kwarg order was not guaranteed to be preserved,
+                #       though it is in practice.
+                for key in sig.parameters:
+                    if key not in input_type:
+                        if (
+                            key in ["context", "ctx"]
+                            or sig.parameters[key].annotation == Context
+                        ):
+                            if self.needs_ctx:
+                                raise ValueError(
+                                    f"API function has two context parameters: '{self.ctx_param}' and '{key}'; it should only have one."
+                                )
+
+                            self.needs_ctx = True
+                            self.ctx_param = key
+                            continue
+
+                        raise ValueError(
+                            f"API function has extra parameter with name '{key}'."
+                        )
+
+                    annotation: t.Type[t.Any] = sig.parameters[key].annotation
                     if (
-                        key in ["context", "ctx"]
-                        or sig.parameters[key].annotation == Context
+                        isinstance(annotation, t.Type)
+                        and annotation != inspect.Signature.empty
                     ):
-                        if self.needs_ctx:
-                            raise ValueError(
-                                f"API function has two context parameters: '{self.ctx_param}' and '{key}'; it should only have one."
+                        # if type annotations have been successfully resolved
+                        if not is_compatible_type(input_type[key], annotation):
+                            raise TypeError(
+                                f"Expected type of argument '{key}' to be '{input_type[key]}', got '{sig.parameters[key].annotation}'"
                             )
 
-                        self.needs_ctx = True
-                        self.ctx_param = key
-                        continue
-
+                expected_args = len(input_type) + (1 if self.needs_ctx else 0)
+                if len(sig.parameters) != expected_args:
                     raise ValueError(
-                        f"API function has extra parameter with name '{key}'."
+                        f"expected API function to have arguments ({', '.join(input_type.keys())}, [context]), got ({', '.join(sig.parameters.keys())})"
                     )
 
-                annotation: t.Type[t.Any] = sig.parameters[key].annotation
+            else:
+                param_iter = iter(sig.parameters)
+                first_arg = next(param_iter)
+                annotation = sig.parameters[first_arg].annotation
                 if (
                     isinstance(annotation, t.Type)
                     and annotation != inspect.Signature.empty
+                    and not is_compatible_type(input_type, annotation)
                 ):
-                    # if type annotations have been successfully resolved
-                    if not is_compatible_type(input_type[key], annotation):
-                        raise TypeError(
-                            f"Expected type of argument '{key}' to be '{input_type[key]}', got '{sig.parameters[key].annotation}'"
-                        )
-
-            expected_args = len(input_type) + (1 if self.needs_ctx else 0)
-            if len(sig.parameters) != expected_args:
-                raise ValueError(
-                    f"expected API function to have arguments ({', '.join(input_type.keys())}, [context]), got ({', '.join(sig.parameters.keys())})"
-                )
-
-        else:
-            param_iter = iter(sig.parameters)
-            first_arg = next(param_iter)
-            annotation = sig.parameters[first_arg].annotation
-            if isinstance(annotation, t.Type) and annotation != inspect.Signature.empty:
-                if not is_compatible_type(input_type, annotation):
                     raise TypeError(
                         f"Expected type of argument '{first_arg}' to be '{input_type}', got '{sig.parameters[first_arg].annotation}'"
                     )
 
-            if len(sig.parameters) > 2:
-                raise ValueError("API function should only take one or two arguments")
-            elif len(sig.parameters) == 2:
-                self.needs_ctx = True
+                if len(sig.parameters) > 2:
+                    raise ValueError(
+                        "API function should only take one or two arguments"
+                    )
+                elif len(sig.parameters) == 2:
+                    self.needs_ctx = True
 
-                second_arg = next(param_iter)
-                annotation = sig.parameters[second_arg].annotation
-                if (
-                    isinstance(annotation, t.Type)
-                    and annotation != inspect.Signature.empty
-                ):
-                    if not annotation == Context:
+                    second_arg = next(param_iter)
+                    annotation = sig.parameters[second_arg].annotation
+                    if (
+                        isinstance(annotation, t.Type)
+                        and annotation != inspect.Signature.empty
+                        and not annotation == Context
+                    ):
                         raise TypeError(
-                            f"Expected type of argument '{second_arg}' to be '{input_type}', got '{sig.parameters[second_arg].annotation}'"
+                            f"Expected type of argument '{second_arg}' to be 'bentoml.Context', got '{annotation}'"
                         )
 
+        if user_defined_callback is not None:
+            self.func = user_defined_callback
+        else:
+
+            def nop(*args: t.Any, **kwargs: t.Any):
+                return
+
+            self.func = nop
+
+        self.name = name
+        self.multi_input = isinstance(input_type, dict)
         self.input = input_descriptor
         self.output = output_descriptor
         self.doc = doc
@@ -157,7 +177,7 @@ class InferenceAPI:
             )
 
 
-def _InferenceAPI_dumper(dumper: yaml.Dumper, api: InferenceAPI) -> yaml.Node:
+def _InferenceAPI_dumper(dumper: yaml.Dumper, api: InferenceAPI[t.Any]) -> yaml.Node:
     return dumper.represent_dict(
         {
             "route": api.route,

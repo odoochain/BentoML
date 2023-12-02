@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-import typing as t
-import logging
 import itertools
+import logging
+import typing as t
 from typing import TYPE_CHECKING
+
+import anyio
 
 from bentoml.exceptions import InvalidArgument
 
@@ -16,6 +18,7 @@ if TYPE_CHECKING:
 
 T = t.TypeVar("T")
 To = t.TypeVar("To")
+Ti = t.TypeVar("Ti")
 
 
 CUDA_SUCCESS = 0
@@ -34,11 +37,7 @@ class Params(t.Generic[T]):
     args: tuple[T, ...]
     kwargs: dict[str, T]
 
-    def __init__(
-        self,
-        *args: T,
-        **kwargs: T,
-    ):
+    def __init__(self, *args: T, **kwargs: T):
         self.args = args
         self.kwargs = kwargs
 
@@ -65,6 +64,20 @@ class Params(t.Generic[T]):
         args = tuple(function(a) for a in self.args)
         kwargs = {k: function(v) for k, v in self.kwargs.items()}
         return Params[To](*args, **kwargs)
+
+    def map_enumerate(
+        self, function: t.Callable[[T, Ti], To], iterable: t.Iterable[Ti]
+    ) -> Params[To]:
+        """
+        Apply function that takes two arguments with given iterable as index to all none empty field in Params.
+        """
+        if self.args:
+            return Params[To](
+                *tuple(function(a, b) for a, b in zip(self.args, iterable))
+            )
+        return Params[To](
+            **{k: function(self.kwargs[k], b) for k, b in zip(self.kwargs, iterable)}
+        )
 
     def iter(self: Params[tuple[t.Any, ...]]) -> t.Iterator[Params[t.Any]]:
         """
@@ -141,3 +154,28 @@ def payload_paramss_to_batch_params(
             f"argument lengths for parameters do not matchs: {tuple(indice_params.items())}"
         )
     return batched_params, indice_params.sample
+
+
+# This is a reference to starlette.concurrency
+class _StopIteration(Exception):
+    pass
+
+
+def _next(iterator: t.Iterator[T]) -> T:
+    # We can't raise `StopIteration` from within the threadpool iterator
+    # and catch it outside that context, so we coerce them into a different
+    # exception type.
+    try:
+        return next(iterator)
+    except StopIteration:
+        raise _StopIteration
+
+
+async def iterate_in_threadpool(
+    iterator: t.Iterator[T],
+) -> t.AsyncIterator[T]:
+    while True:
+        try:
+            yield await anyio.to_thread.run_sync(_next, iterator)
+        except _StopIteration:
+            break

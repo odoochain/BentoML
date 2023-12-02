@@ -110,7 +110,6 @@ tests/integration/data
 # setuptools_scm generated version file
 typings
 **/*/_version.py
-typings
 
 # test files
 catboost_info
@@ -149,3 +148,21 @@ Package.resolved
 **/*/php/GPBMetadata
 composer.lock
 vendor
+*.pkl
+*.ckpt
+
+# Triton-related
+*.pt
+*.savedmodel
+*.onnx
+*.engine
+*.plan
+*.bin
+yolov5*
+
+# MLflow runs
+mlruns/
+
+# pdm
+.pdm-python
+.pdm-build/

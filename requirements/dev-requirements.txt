@@ -1,4 +1,0 @@
-# Dev dependencies
--r tests-requirements.txt
-twine
-wheel

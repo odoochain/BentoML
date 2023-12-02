@@ -1,54 +1,54 @@
 from __future__ import annotations
 
+import functools
 import io
 import typing as t
-import functools
-from typing import TYPE_CHECKING
 from urllib.parse import quote
 
-from starlette.requests import Request
 from multipart.multipart import parse_options_header
-from starlette.responses import Response
 from starlette.datastructures import UploadFile
+from starlette.requests import Request
+from starlette.responses import Response
 
-from .base import IODescriptor
+from ...exceptions import BadInput
+from ...exceptions import InternalServerError
+from ...exceptions import InvalidArgument
+from ...exceptions import MissingDependencyException
+from ...grpc.utils import import_generated_stubs
+from ..service.openapi import SUCCESS_DESCRIPTION
+from ..service.openapi.specification import MediaType
+from ..service.openapi.specification import Schema
 from ..types import LazyType
 from ..utils import LazyLoader
+from ..utils import resolve_user_filepath
 from ..utils.http import set_cookies
-from ...exceptions import BadInput
-from ...exceptions import InvalidArgument
-from ...exceptions import InternalServerError
-from ..service.openapi import SUCCESS_DESCRIPTION
-from ..service.openapi.specification import Schema
-from ..service.openapi.specification import Response as OpenAPIResponse
-from ..service.openapi.specification import MediaType
-from ..service.openapi.specification import RequestBody
+from .base import IODescriptor
 
-if TYPE_CHECKING:
+PIL_EXC_MSG = "'Pillow' is required to use the Image IO descriptor. Install with 'pip install bentoml[io-image]'."
+
+if t.TYPE_CHECKING:
     from types import UnionType
 
     import PIL
     import PIL.Image
 
-    from bentoml.grpc.v1alpha1 import service_pb2 as pb
-
+    from ...grpc.v1 import service_pb2 as pb
+    from ...grpc.v1alpha1 import service_pb2 as pb_v1alpha1
     from .. import external_typing as ext
-    from ..context import InferenceApiContext as Context
+    from ..context import ServiceContext as Context
+    from .base import OpenAPIResponse
 
     _Mode = t.Literal[
         "1", "CMYK", "F", "HSV", "I", "L", "LAB", "P", "RGB", "RGBA", "RGBX", "YCbCr"
     ]
 else:
-    from bentoml.grpc.utils import import_generated_stubs
-
     # NOTE: pillow-simd only benefits users who want to do preprocessing
     # TODO: add options for users to choose between simd and native mode
-    _exc = "'Pillow' is required to use the Image IO descriptor. Install it with: 'pip install -U Pillow'."
-    PIL = LazyLoader("PIL", globals(), "PIL", exc_msg=_exc)
-    PIL.Image = LazyLoader("PIL.Image", globals(), "PIL.Image", exc_msg=_exc)
+    PIL = LazyLoader("PIL", globals(), "PIL", exc_msg=PIL_EXC_MSG)
+    PIL.Image = LazyLoader("PIL.Image", globals(), "PIL.Image", exc_msg=PIL_EXC_MSG)
 
-    pb, _ = import_generated_stubs()
-
+    pb, _ = import_generated_stubs("v1")
+    pb_v1alpha1, _ = import_generated_stubs("v1alpha1")
 
 # NOTES: we will keep type in quotation to avoid backward compatibility
 #  with numpy < 1.20, since we will use the latest stubs from the main branch of numpy.
@@ -58,10 +58,7 @@ ImageType = t.Union["PIL.Image.Image", "ext.NpNDArray"]
 DEFAULT_PIL_MODE = "RGB"
 
 
-PIL_WRITE_ONLY_FORMATS = {
-    "PALM",
-    "PDF",
-}
+PIL_WRITE_ONLY_FORMATS = {"PALM", "PDF"}
 READABLE_MIMES: set[str] = None  # type: ignore (lazy constant)
 MIME_EXT_MAPPING: dict[str, str] = None  # type: ignore (lazy constant)
 
@@ -74,16 +71,16 @@ def initialize_pillow():
     try:
         import PIL.Image
     except ImportError:
-        raise InternalServerError(
-            "`Pillow` is required to use {__name__}\n Instructions: `pip install -U Pillow`"
-        )
+        raise InternalServerError(PIL_EXC_MSG)
 
     PIL.Image.init()
     MIME_EXT_MAPPING = {v: k for k, v in PIL.Image.MIME.items()}  # type: ignore (lazy constant)
     READABLE_MIMES = {k for k, v in MIME_EXT_MAPPING.items() if v not in PIL_WRITE_ONLY_FORMATS}  # type: ignore (lazy constant)
 
 
-class Image(IODescriptor[ImageType]):
+class Image(
+    IODescriptor[ImageType], descriptor_id="bentoml.io.Image", proto_fields=("file",)
+):
     """
     :obj:`Image` defines API specification for the inputs/outputs of a Service, where either
     inputs will be converted to or outputs will be converted from images as specified
@@ -170,8 +167,6 @@ class Image(IODescriptor[ImageType]):
         :obj:`Image`: IO Descriptor that either a :code:`PIL.Image.Image` or a :code:`np.ndarray` representing an image.
     """
 
-    _proto_fields = ("file",)
-
     def __init__(
         self,
         pilmode: _Mode | None = DEFAULT_PIL_MODE,
@@ -213,6 +208,83 @@ class Image(IODescriptor[ImageType]):
         self._pilmode: _Mode | None = pilmode
         self._format: str = MIME_EXT_MAPPING[self._mime_type]
 
+    def _from_sample(self, sample: ImageType | str) -> ImageType:
+        """
+        Create a :class:`~bentoml._internal.io_descriptors.image.Image` IO Descriptor from given inputs.
+
+        Args:
+            sample: Given File-like object, or a path to a file.
+            pilmode: Optional color mode for PIL. Default to ``RGB``.
+            mime_type: The MIME type of the file type that this descriptor should return.
+                       If not specified, then ``from_sample`` will try to infer the MIME type
+                       from file extension.
+            allowed_mime_types: An optional list of MIME types to restrict input to.
+
+        Returns:
+            :class:`~bentoml._internal.io_descriptors.image.Image`: IODescriptor from given users inputs.
+
+        Example:
+
+        .. code-block:: python
+           :caption: `service.py`
+
+           from __future__ import annotations
+
+           import bentoml
+           from typing import Any
+           from bentoml.io import Image
+           import numpy as np
+
+           input_spec = Image.from_sample("/path/to/image.jpg")
+           @svc.api(input=input_spec, output=Image())
+           async def predict(input: t.IO[t.Any]) -> t.IO[t.Any]:
+               return await runner.async_run(input)
+
+        Raises:
+            :class:`InvalidArgument`: If the given sample is not a valid image type.
+            :class:`MissingDependencyException`: If ``filetype`` is not installed.
+            :class:`BadInput`: Given sample from file can't be parsed with Pillow.
+        """
+        try:
+            from filetype.match import image_match
+        except ModuleNotFoundError:
+            raise MissingDependencyException(
+                "'filetype' is required to use 'from_sample'. Install it with 'pip install bentoml[io-image]'."
+            )
+
+        img_type = image_match(sample)
+        if img_type is None:
+            raise InvalidArgument(f"{sample} is not a valid image file type.")
+
+        if LazyType["ext.NpNDArray"]("numpy.ndarray").isinstance(sample):
+            sample = PIL.Image.fromarray(sample)
+        elif isinstance(sample, str):
+            p = resolve_user_filepath(sample, ctx=None)
+            try:
+                with open(p, "rb") as f:
+                    sample = PIL.Image.open(f)
+            except PIL.UnidentifiedImageError as err:
+                raise BadInput(f"Failed to parse sample image file: {err}") from None
+        self._mime_type = img_type.mime
+        return sample
+
+    def to_spec(self) -> dict[str, t.Any]:
+        return {
+            "id": self.descriptor_id,
+            "args": {
+                "pilmode": self._pilmode,
+                "mime_type": self._mime_type,
+                "allowed_mime_types": list(self._allowed_mimes),
+            },
+        }
+
+    @classmethod
+    def from_spec(cls, spec: dict[str, t.Any]) -> t.Self:
+        if "args" not in spec:
+            raise InvalidArgument(f"Missing args key in Image spec: {spec}")
+
+        return cls(**spec["args"])
+
     def input_type(self) -> UnionType:
         return ImageType
 
@@ -222,20 +294,25 @@ class Image(IODescriptor[ImageType]):
     def openapi_components(self) -> dict[str, t.Any] | None:
         pass
 
-    def openapi_request_body(self) -> RequestBody:
-        return RequestBody(
-            content={
+    def openapi_example(self):
+        pass
+
+    def openapi_request_body(self) -> dict[str, t.Any]:
+        return {
+            "content": {
                 mtype: MediaType(schema=self.openapi_schema())
                 for mtype in self._allowed_mimes
             },
-            required=True,
-        )
+            "required": True,
+            "x-bentoml-io-descriptor": self.to_spec(),
+        }
 
     def openapi_responses(self) -> OpenAPIResponse:
-        return OpenAPIResponse(
-            description=SUCCESS_DESCRIPTION,
-            content={self._mime_type: MediaType(schema=self.openapi_schema())},
-        )
+        return {
+            "description": SUCCESS_DESCRIPTION,
+            "content": {self._mime_type: MediaType(schema=self.openapi_schema())},
+            "x-bentoml-io-descriptor": self.to_spec(),
+        }
 
     async def from_http_request(self, request: Request) -> ImageType:
         content_type, _ = parse_options_header(request.headers["content-type"])
@@ -298,15 +375,15 @@ class Image(IODescriptor[ImageType]):
 
         try:
             return PIL.Image.open(io.BytesIO(bytes_))
-        except PIL.UnidentifiedImageError:  # type: ignore (bad pillow types)
-            raise BadInput("Failed to parse uploaded image file") from None
+        except PIL.UnidentifiedImageError as err:
+            raise BadInput(f"Failed to parse uploaded image file: {err}") from None
 
     async def to_http_response(
         self, obj: ImageType, ctx: Context | None = None
     ) -> Response:
         if LazyType["ext.NpNDArray"]("numpy.ndarray").isinstance(obj):
             image = PIL.Image.fromarray(obj, mode=self._pilmode)
-        elif LazyType[PIL.Image.Image]("PIL.Image.Image").isinstance(obj):
+        elif LazyType["PIL.Image.Image"]("PIL.Image.Image").isinstance(obj):
             image = obj
         else:
             raise BadInput(
@@ -344,15 +421,13 @@ class Image(IODescriptor[ImageType]):
                 headers={"content-disposition": content_disposition},
             )
 
-    async def from_proto(self, field: pb.File | bytes) -> ImageType:
-        from bentoml.grpc.utils import filetype_pb_to_mimetype_map
-
-        mapping = filetype_pb_to_mimetype_map()
-        # check if the request message has the correct field
+    async def from_proto(self, field: pb.File | pb_v1alpha1.File | bytes) -> ImageType:
         if isinstance(field, bytes):
             content = field
-        else:
-            assert isinstance(field, pb.File)
+        elif isinstance(field, pb_v1alpha1.File):
+            from .file import filetype_pb_to_mimetype_map
+
+            mapping = filetype_pb_to_mimetype_map()
             if field.kind:
                 try:
                     mime_type = mapping[field.kind]
@@ -362,16 +437,32 @@ class Image(IODescriptor[ImageType]):
                         )
                 except KeyError:
                     raise BadInput(
-                        f"{field.kind} is not a valid File kind. Accepted file kind: {[names for names,_ in pb.File.FileType.items()]}",
+                        f"{field.kind} is not a valid File kind. Accepted file kind: {[names for names,_ in pb_v1alpha1.File.FileType.items()]}",
                     ) from None
+            if not field.content:
+                raise BadInput("Content is empty!") from None
+            return PIL.Image.open(io.BytesIO(field.content))
+        else:
+            assert isinstance(field, pb.File)
+            if field.kind and field.kind != self._mime_type:
+                raise BadInput(
+                    f"MIME type from 'kind' is '{field.kind}', while '{self!r}' is expecting '{self._mime_type}'",
+                )
             content = field.content
             if not content:
                 raise BadInput("Content is empty!") from None
 
         return PIL.Image.open(io.BytesIO(content))
 
-    async def to_proto(self, obj: ImageType) -> pb.File:
-        from bentoml.grpc.utils import mimetype_to_filetype_pb_map
+    async def to_proto_v1alpha1(self, obj: ImageType) -> pb_v1alpha1.File:
+        from .file import mimetype_to_filetype_pb_map
+
+        try:
+            kind = mimetype_to_filetype_pb_map()[self._mime_type]
+        except KeyError:
+            raise BadInput(
+                f"{self._mime_type} doesn't have a corresponding File 'kind'"
+            ) from None
 
         if LazyType["ext.NpNDArray"]("numpy.ndarray").isinstance(obj):
             image = PIL.Image.fromarray(obj, mode=self._pilmode)
@@ -384,11 +475,18 @@ class Image(IODescriptor[ImageType]):
         ret = io.BytesIO()
         image.save(ret, format=self._format)
 
-        try:
-            kind = mimetype_to_filetype_pb_map()[self._mime_type]
-        except KeyError:
-            raise BadInput(
-                f"{self._mime_type} doesn't have a corresponding File 'kind'",
-            ) from None
+        return pb_v1alpha1.File(kind=kind, content=ret.getvalue())
 
-        return pb.File(kind=kind, content=ret.getvalue())
+    async def to_proto(self, obj: ImageType) -> pb.File:
+        if LazyType["ext.NpNDArray"]("numpy.ndarray").isinstance(obj):
+            image = PIL.Image.fromarray(obj, mode=self._pilmode)
+        elif LazyType["PIL.Image.Image"]("PIL.Image.Image").isinstance(obj):
+            image = obj
+        else:
+            raise BadInput(
+                f"Unsupported Image type received: '{type(obj)}', the Image IO descriptor only supports 'np.ndarray' and 'PIL.Image'.",
+            ) from None
+        ret = io.BytesIO()
+        image.save(ret, format=self._format)
+
+        return pb.File(kind=self._mime_type, content=ret.getvalue())

@@ -1,38 +1,44 @@
 from __future__ import annotations
 
-import typing as t
 import asyncio
-from typing import TYPE_CHECKING
+import typing as t
 
-from starlette.requests import Request
 from multipart.multipart import parse_options_header
+from starlette.requests import Request
 from starlette.responses import Response
 
-from .base import IODescriptor
-from ...exceptions import InvalidArgument
 from ...exceptions import BentoMLException
+from ...exceptions import InvalidArgument
+from ...grpc.utils import import_generated_stubs
 from ..service.openapi import SUCCESS_DESCRIPTION
-from ..utils.formparser import populate_multipart_requests
-from ..utils.formparser import concat_to_multipart_response
-from ..service.openapi.specification import Schema
-from ..service.openapi.specification import Response as OpenAPIResponse
 from ..service.openapi.specification import MediaType
-from ..service.openapi.specification import RequestBody
+from ..service.openapi.specification import Schema
+from ..utils.formparser import concat_to_multipart_response
+from ..utils.formparser import populate_multipart_requests
+from . import from_spec as io_descriptor_from_spec
+from .base import IODescriptor
 
-if TYPE_CHECKING:
+if t.TYPE_CHECKING:
     from types import UnionType
 
-    from bentoml.grpc.v1alpha1 import service_pb2 as pb
+    from google.protobuf import message as _message
 
+    from bentoml.grpc.v1 import service_pb2 as pb
+    from bentoml.grpc.v1alpha1 import service_pb2 as pb_v1alpha1
+
+    from ..context import ServiceContext as Context
     from ..types import LazyType
-    from ..context import InferenceApiContext as Context
+    from .base import OpenAPIResponse
 else:
-    from bentoml.grpc.utils import import_generated_stubs
+    pb, _ = import_generated_stubs("v1")
+    pb_v1alpha1, _ = import_generated_stubs("v1alpha1")
 
-    pb, _ = import_generated_stubs()
 
-
-class Multipart(IODescriptor[t.Dict[str, t.Any]]):
+class Multipart(
+    IODescriptor[t.Dict[str, t.Any]],
+    descriptor_id="bentoml.io.Multipart",
+    proto_fields=("multipart",),
+):
     """
     :obj:`Multipart` defines API specification for the inputs/outputs of a Service, where inputs/outputs
     of a Service can receive/send a **multipart** request/responses as specified in your API function signature.
@@ -160,7 +166,6 @@ class Multipart(IODescriptor[t.Dict[str, t.Any]]):
         :obj:`Multipart`: IO Descriptor that represents a Multipart request/response.
     """
 
-    _proto_fields = ("multipart",)
     _mime_type = "multipart/form-data"
 
     def __init__(self, **inputs: IODescriptor[t.Any]):
@@ -172,6 +177,9 @@ class Multipart(IODescriptor[t.Dict[str, t.Any]]):
 
     def __repr__(self) -> str:
         return f"Multipart({','.join([f'{k}={v}' for k,v in zip(self._inputs, map(repr, self._inputs.values()))])})"
+
+    def _from_sample(cls, sample: dict[str, t.Any]) -> t.Any:
+        raise NotImplementedError("'from_sample' is not supported for Multipart.")
 
     def input_type(
         self,
@@ -187,6 +195,26 @@ class Multipart(IODescriptor[t.Dict[str, t.Any]]):
 
         return res
 
+    def to_spec(self) -> dict[str, t.Any]:
+        return {
+            "id": self.descriptor_id,
+            "args": {
+                argname: descriptor.to_spec()
+                for argname, descriptor in self._inputs.items()
+            },
+        }
+
+    @classmethod
+    def from_spec(cls, spec: dict[str, t.Any]) -> t.Self:
+        if "args" not in spec:
+            raise InvalidArgument(f"Missing args key in Multipart spec: {spec}")
+        return Multipart(
+            **{
+                argname: io_descriptor_from_spec(spec)
+                for argname, spec in spec["args"].items()
+            }
+        )
+
     def openapi_schema(self) -> Schema:
         return Schema(
             type="object",
@@ -194,19 +222,39 @@ class Multipart(IODescriptor[t.Dict[str, t.Any]]):
         )
 
     def openapi_components(self) -> dict[str, t.Any] | None:
-        pass
+        components = {}
 
-    def openapi_request_body(self) -> RequestBody:
-        return RequestBody(
-            content={self._mime_type: MediaType(schema=self.openapi_schema())},
-            required=True,
-        )
+        for io in self._inputs.values():
+            child_components = io.openapi_components()
+            if child_components is not None:
+                components.update(child_components)
+
+        return components
+
+    def openapi_example(self) -> t.Any:
+        return {args: io.openapi_example() for args, io in self._inputs.items()}
+
+    def openapi_request_body(self) -> dict[str, t.Any]:
+        return {
+            "content": {
+                self._mime_type: MediaType(
+                    schema=self.openapi_schema(), example=self.openapi_example()
+                )
+            },
+            "required": True,
+            "x-bentoml-io-descriptor": self.to_spec(),
+        }
 
     def openapi_responses(self) -> OpenAPIResponse:
-        return OpenAPIResponse(
-            description=SUCCESS_DESCRIPTION,
-            content={self._mime_type: MediaType(schema=self.openapi_schema())},
-        )
+        return {
+            "description": SUCCESS_DESCRIPTION,
+            "content": {
+                self._mime_type: MediaType(
+                    schema=self.openapi_schema(), example=self.openapi_example()
+                )
+            },
+            "x-bentoml-io-descriptor": self.to_spec(),
+        }
 
     async def from_http_request(self, request: Request) -> dict[str, t.Any]:
         ctype, _ = parse_options_header(request.headers["content-type"])
@@ -215,13 +263,25 @@ class Multipart(IODescriptor[t.Dict[str, t.Any]]):
                 f"{self.__class__.__name__} only accepts `multipart/form-data` as Content-Type header, got {ctype} instead."
             ) from None
 
-        to_populate = zip(
-            self._inputs.values(), (await populate_multipart_requests(request)).values()
-        )
-        reqs = await asyncio.gather(
-            *tuple(io_.from_http_request(req) for io_, req in to_populate)
-        )
-        return dict(zip(self._inputs, reqs))
+        form_values = await populate_multipart_requests(request)
+
+        res = {}
+        repopulate = False
+        for field, descriptor in self._inputs.items():
+            if field not in form_values:
+                repopulate = True
+                break
+            res[field] = await descriptor.from_http_request(form_values[field])
+
+        if repopulate:
+            # break happened;
+            to_populate = zip(self._inputs.values(), form_values.values())
+            reqs = await asyncio.gather(
+                *tuple(io_.from_http_request(req) for io_, req in to_populate)
+            )
+            res = dict(zip(self._inputs, reqs))
+
+        return res
 
     async def to_http_response(
         self, obj: dict[str, t.Any], ctx: Context | None = None
@@ -264,7 +324,23 @@ class Multipart(IODescriptor[t.Dict[str, t.Any]]):
         )
         return dict(zip(self._inputs.keys(), reqs))
 
-    async def to_proto(self, obj: dict[str, t.Any]) -> pb.Multipart:
+    @t.overload
+    async def _to_proto_impl(
+        self, obj: dict[str, t.Any], *, version: t.Literal["v1"]
+    ) -> pb.Multipart:
+        ...
+
+    @t.overload
+    async def _to_proto_impl(
+        self, obj: dict[str, t.Any], *, version: t.Literal["v1alpha1"]
+    ) -> pb_v1alpha1.Multipart:
+        ...
+
+    async def _to_proto_impl(
+        self, obj: dict[str, t.Any], *, version: str
+    ) -> _message.Message:
+        pb, _ = import_generated_stubs(version)
+
         self.validate_input_mapping(obj)
         resps = await asyncio.gather(
             *tuple(
@@ -278,9 +354,15 @@ class Multipart(IODescriptor[t.Dict[str, t.Any]]):
                     obj,
                     [
                         # TODO: support multiple proto_fields
-                        pb.Part(**{io_._proto_fields[0]: resp})
+                        pb.Part(**{io_.proto_fields[0]: resp})
                         for io_, resp in zip(self._inputs.values(), resps)
                     ],
                 )
             )
         )
+
+    async def to_proto(self, obj: dict[str, t.Any]) -> pb.Multipart:
+        return await self._to_proto_impl(obj, version="v1")
+
+    async def to_proto_v1alpha1(self, obj: dict[str, t.Any]) -> pb_v1alpha1.Multipart:
+        return await self._to_proto_impl(obj, version="v1alpha1")

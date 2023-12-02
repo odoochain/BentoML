@@ -38,6 +38,17 @@ Here's an example with starlette-authlib:
     svc.add_asgi_middleware(SessionMiddleware, secret_key='you_secret')
 
 
+Certificates
+^^^^^^^^^^^^
+
+BentoML supports HTTPS with self-signed certificates. To enable HTTPS, you can to provide SSL certificate and key files as arguments
+to the :code:`bentoml serve` command. Use :code:`bentoml serve --help` to see the full list of options.
+
+.. code::
+
+    bentoml serve iris_classifier:latest --ssl-certfile /path/to/cert.pem --ssl-keyfile /path/to/key.pem
+
+
 Reverse Proxy
 ^^^^^^^^^^^^^
 
@@ -47,11 +58,7 @@ It is a common practice to set up a reverse proxy server to handle rate limiting
 Service Mesh
 ^^^^^^^^^^^^
 
-For Kubernetes users looking for advanced authentication, access control, and routing
-policies, we recommend you to deploy Bentos with `Yatai <https://github.com/bentoml/Yatai>`_
-and use Yatai's `Istio <https://istio.io/>`_ integration.
-
-
+For Kubernetes users looking for advanced authentication, access control, and routing policies, we recommend you deploy Bentos with BentoCloud.
 
 Security Policy
 ---------------
@@ -65,6 +72,5 @@ View the full BentoML’s security policy `here <https://github.com/bentoml/Bent
 .. TODO::
 
     * Base Image Security
-    * Securing Yatai deployment
     * Reverse Proxy setup guide and sample code/config
     * Service Mesh setup guide and sample code/config

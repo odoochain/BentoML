@@ -1,46 +1,41 @@
 from __future__ import annotations
 
-import os
-import re
-import sys
-import uuid
-import random
-import socket
-import typing as t
+import asyncio
+import contextlib
+import functools
 import inspect
 import logging
-import functools
-import contextlib
-from typing import overload
-from typing import TYPE_CHECKING
+import os
+import random
+import re
+import socket
+import typing as t
+from datetime import date
+from datetime import datetime
+from datetime import time
+from datetime import timedelta
 from pathlib import Path
 from reprlib import recursive_repr as _recursive_repr
-from datetime import date
-from datetime import time
-from datetime import datetime
-from datetime import timedelta
+from typing import TYPE_CHECKING
+from typing import overload
 
-import fs
 import attr
+import fs
 import fs.copy
 from rich.console import Console
 
-if sys.version_info >= (3, 8):
-    from functools import cached_property
-else:
-    from backports.cached_property import cached_property
-
-from .cattr import bentoml_cattr
 from ..types import LazyType
+from .cattr import bentoml_cattr
 from .lazy_loader import LazyLoader
+from .uri import encode_path_for_uri
 
 if TYPE_CHECKING:
     from fs.base import FS
     from typing_extensions import Self
 
-    from ..types import PathType
     from ..types import MetadataDict
     from ..types import MetadataType
+    from ..types import PathType
 
     P = t.ParamSpec("P")
     F = t.Callable[P, t.Any]
@@ -54,13 +49,10 @@ rich_console = Console(theme=None)
 
 __all__ = [
     "bentoml_cattr",
-    "cached_property",
     "cached_contextmanager",
     "reserve_free_port",
-    "catch_exceptions",
     "LazyLoader",
     "validate_or_create_dir",
-    "display_path_under_home",
     "rich_console",
     "experimental",
     "compose",
@@ -68,26 +60,56 @@ __all__ = [
 
 _EXPERIMENTAL_APIS: set[str] = set()
 
+logger = logging.getLogger(__name__)
 
-def _warn_experimental(f: t.Any):
-    api_name = f.__name__ if inspect.isfunction(f) else repr(f)
+
+def warn_experimental(api_name: str) -> None:
+    """
+    Warns the user that the given API is experimental.
+    Make sure that if the API is not experimental anymore, this function call is removed.
+
+    If 'api_name' requires string formatting, use %-formatting for optimization.
+
+    Args:
+        api_name: The name of the API that is experimental.
+    """
     if api_name not in _EXPERIMENTAL_APIS:
         _EXPERIMENTAL_APIS.add(api_name)
         msg = "'%s' is an EXPERIMENTAL API and is currently not yet stable. Proceed with caution!"
-        logger = logging.getLogger(f.__module__)
         logger.warning(msg, api_name)
 
 
-def experimental(f: t.Callable[P, t.Any]) -> t.Callable[P, t.Any]:
-    @functools.wraps(f)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> t.Any:
-        _warn_experimental(f)
-        return f(*args, **kwargs)
+def experimental(
+    f: t.Callable[P, t.Any] | None = None, *, api_name: str | None = None
+) -> t.Callable[..., t.Any]:
+    """
+    Decorator to mark an API as experimental.
 
-    return wrapper
+    If 'api_name' requires string formatting, use %-formatting for optimization.
+
+    Args:
+        api_name: The name of the API that is experimental.
+    """
+    if api_name is None:
+        api_name = f.__name__ if inspect.isfunction(f) else repr(f)
+
+    def decorator(func: t.Callable[..., t.Any]) -> t.Callable[P, t.Any]:
+        @functools.wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> t.Any:
+            warn_experimental(api_name)
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    if f is None:
+        return decorator
+    return decorator(f)
 
 
 def add_experimental_docstring(f: t.Callable[P, t.Any]) -> t.Callable[P, t.Any]:
+    """
+    Decorator to add an experimental warning to the docstring of a function.
+    """
     f.__doc__ = "[EXPERIMENTAL] " + (f.__doc__ if f.__doc__ is not None else "")
     return f
 
@@ -109,8 +131,14 @@ def first_not_none(*args: T | None, default: None | T = None) -> T | None:
     return next((arg for arg in args if arg is not None), default)
 
 
-def randomize_runner_name(module_name: str):
-    return f"{module_name.split('.')[-1]}_{uuid.uuid4().hex[:6].lower()}"
+def normalize_labels_value(label: dict[str, t.Any] | None) -> dict[str, str] | None:
+    if not label:
+        return label
+    if any(not isinstance(v, str) for v in label.values()):
+        logger.warning(
+            "'labels' should be a dict[str, str] and enforced by BentoML. Converting all values to string."
+        )
+    return {k: str(v) for k, v in label.items()}
 
 
 def validate_or_create_dir(*path: PathType) -> None:
@@ -128,16 +156,6 @@ def calc_dir_size(path: PathType) -> int:
     return sum(f.stat().st_size for f in Path(path).glob("**/*") if f.is_file())
 
 
-def display_path_under_home(path: str) -> str:
-    # Shorten path under home directory with leading `~`
-    # e.g. from `/Users/foo/bar` to just `~/bar`
-    try:
-        return str("~" / Path(path).relative_to(Path.home()))
-    except ValueError:
-        # when path is not under home directory, return original full path
-        return path
-
-
 def human_readable_size(size: t.Union[int, float], decimal_places: int = 2) -> str:
     for unit in ["B", "KiB", "MiB", "GiB", "TiB", "PiB"]:
         if size < 1024.0 or unit == "PiB":
@@ -146,34 +164,6 @@ def human_readable_size(size: t.Union[int, float], decimal_places: int = 2) -> s
     else:
         raise ValueError("size is too large")
     return f"{size:.{decimal_places}f} {unit}"
-
-
-class catch_exceptions(t.Generic[_T_co], object):
-    def __init__(
-        self,
-        catch_exc: t.Union[t.Type[BaseException], t.Tuple[t.Type[BaseException], ...]],
-        throw_exc: t.Callable[[str], BaseException],
-        msg: str = "",
-        fallback: t.Optional[_T_co] = None,
-        raises: t.Optional[bool] = True,
-    ) -> None:
-        self._catch_exc = catch_exc
-        self._throw_exc = throw_exc
-        self._msg = msg
-        self._fallback = fallback
-        self._raises = raises
-
-    def __call__(self, func: t.Callable[P, _T_co]) -> t.Callable[P, t.Optional[_T_co]]:
-        @functools.wraps(func)
-        def _(*args: P.args, **kwargs: P.kwargs) -> t.Optional[_T_co]:
-            try:
-                return func(*args, **kwargs)
-            except self._catch_exc:
-                if self._raises:
-                    raise self._throw_exc(self._msg)
-                return self._fallback
-
-        return _
 
 
 def split_with_quotes(
@@ -276,9 +266,10 @@ def copy_file_to_fs_folder(
     """
     src_path = os.path.realpath(os.path.expanduser(src_path))
     dir_name, file_name = os.path.split(src_path)
-    src_fs = fs.open_fs(dir_name)
+    src_fs = fs.open_fs(encode_path_for_uri(dir_name))
     dst_filename = file_name if dst_filename is None else dst_filename
     dst_path = fs.path.join(dst_folder_path, dst_filename)
+    dst_fs.makedir(dst_folder_path, recreate=True)
     fs.copy.copy_file(src_fs, file_name, dst_fs, dst_path)
 
 
@@ -412,7 +403,6 @@ class cached_contextmanager:
     def __call__(
         self, func: "t.Callable[P, t.Generator[VT, None, None]]"
     ) -> "t.Callable[P, t.ContextManager[VT]]":
-
         func_m = contextlib.contextmanager(func)
 
         @contextlib.contextmanager
@@ -438,7 +428,7 @@ class cached_contextmanager:
 class compose:
     """
     Function composition: compose(f, g)(...) is equivalent to f(g(...)).
-    Refers to https://github.com/mentalisttraceur/python-compose for original implementation.
+    Refer to https://github.com/mentalisttraceur/python-compose for original implementation.
 
     Args:
         *functions: Functions (or other callables) to compose.
@@ -490,3 +480,13 @@ class compose:
     def functions(self):
         """Read-only tuple of the composed callables, in order of execution."""
         return (self.__wrapped__,) + tuple(self._wrappers)
+
+
+def is_async_callable(obj: t.Any) -> t.TypeGuard[t.Callable[..., t.Awaitable[t.Any]]]:
+    # Borrowed from starlette._utils
+    while isinstance(obj, functools.partial):
+        obj = obj.func
+
+    return asyncio.iscoroutinefunction(obj) or (
+        callable(obj) and asyncio.iscoroutinefunction(obj.__call__)
+    )

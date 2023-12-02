@@ -1,24 +1,25 @@
 from __future__ import annotations
 
 import typing as t
+from contextlib import contextmanager
 from types import ModuleType
 from typing import TYPE_CHECKING
-from contextlib import contextmanager
 
-from simple_di import inject
 from simple_di import Provide
+from simple_di import inject
 
-from .exceptions import BentoMLException
-from ._internal.tag import Tag
-from ._internal.utils import calc_dir_size
+from ._internal.configuration.containers import BentoMLContainer
 from ._internal.models import Model
 from ._internal.models import ModelContext
 from ._internal.models import ModelOptions
-from ._internal.utils.analytics import track
+from ._internal.tag import Tag
+from ._internal.utils import calc_dir_size
 from ._internal.utils.analytics import ModelSaveEvent
-from ._internal.configuration.containers import BentoMLContainer
+from ._internal.utils.analytics import track
+from .exceptions import BentoMLException
 
 if TYPE_CHECKING:
+    from ._internal.cloud import BentoCloudClient
     from ._internal.models import ModelStore
     from ._internal.models.model import ModelSignaturesType
 
@@ -37,7 +38,10 @@ def get(
     tag: t.Union[Tag, str],
     *,
     _model_store: "ModelStore" = Provide[BentoMLContainer.model_store],
+    model_aliases: t.Dict[str, str] = Provide[BentoMLContainer.model_aliases],
 ) -> "Model":
+    if isinstance(tag, str) and tag in model_aliases:
+        tag = model_aliases[tag]
     return _model_store.get(tag)
 
 
@@ -99,15 +103,12 @@ def import_model(
     Args:
         tag: the tag of the model to export
         path: can be one of two things:
-            * a folder on the local filesystem
-            * an `FS URL <https://docs.pyfilesystem.org/en/latest/openers.html>`_, for example
-                :code:`'s3://my_bucket/folder/my_model.bentomodel'`
-        protocol: (expert) The FS protocol to use when exporting. Some example protocols are :code:`'ftp'`,
-            :code:`'s3'`, and :code:`'userdata'`
+              * a folder on the local filesystem
+              * an `FS URL <https://docs.pyfilesystem.org/en/latest/openers.html>`_, for example :code:`'s3://my_bucket/folder/my_model.bentomodel'`
+        protocol: (expert) The FS protocol to use when exporting. Some example protocols are :code:`'ftp'`, :code:`'s3'`, and :code:`'userdata'`
         user: (expert) the username used for authentication if required, e.g. for FTP
         passwd: (expert) the username used for authentication if required, e.g. for FTP
-        params: (expert) a map of parameters to be passed to the FS used for export, e.g. :code:`{'proxy': 'myproxy.net'}`
-            for setting a proxy for FTP
+        params: (expert) a map of parameters to be passed to the FS used for export, e.g. :code:`{'proxy': 'myproxy.net'}` for setting a proxy for FTP
         subpath: (expert) the path inside the FS that the model should be exported to
         _model_store: the model store to save the model to
 
@@ -122,7 +123,7 @@ def import_model(
         passwd=passwd,
         params=params,
         subpath=subpath,
-    )._save(_model_store)
+    ).save(_model_store)
 
 
 @inject
@@ -177,15 +178,12 @@ def export_model(
     Args:
         tag: the tag of the model to export
         path: can be one of two things:
-            * a folder on the local filesystem
-            * an `FS URL <https://docs.pyfilesystem.org/en/latest/openers.html>`_, for example,
-                :code:`'s3://my_bucket/folder/my_model.bentomodel'`
-        protocol: (expert) The FS protocol to use when exporting. Some example protocols are :code:`'ftp'`,
-            :code:`'s3'`, and :code:`'userdata'`.
+              * a folder on the local filesystem
+              * an `FS URL <https://docs.pyfilesystem.org/en/latest/openers.html>`_, for example, :code:`'s3://my_bucket/folder/my_model.bentomodel'`
+        protocol: (expert) The FS protocol to use when exporting. Some example protocols are :code:`'ftp'`, :code:`'s3'`, and :code:`'userdata'`.
         user: (expert) the username used for authentication if required, e.g. for FTP
         passwd: (expert) the username used for authentication if required, e.g. for FTP
-        params: (expert) a map of parameters to be passed to the FS used for export, e.g. :code:`{'proxy': 'myproxy.net'}`
-            for setting a proxy for FTP
+        params: (expert) a map of parameters to be passed to the FS used for export, e.g. :code:`{'proxy': 'myproxy.net'}` for setting a proxy for FTP
         subpath: (expert) the path inside the FS that the model should be exported to
         _model_store: the model store to get the model to save from
 
@@ -211,26 +209,70 @@ def push(
     *,
     force: bool = False,
     _model_store: "ModelStore" = Provide[BentoMLContainer.model_store],
+    _cloud_client: BentoCloudClient = Provide[BentoMLContainer.bentocloud_client],
 ):
-    from bentoml._internal.yatai_client import yatai_client
-
     model_obj = _model_store.get(tag)
     if not model_obj:
         raise BentoMLException(f"Model {tag} not found in local store")
-    yatai_client.push_model(model_obj, force=force)
+    _cloud_client.push_model(model_obj, force=force)
 
 
 @inject
-def pull(tag: t.Union[Tag, str], *, force: bool = False) -> Model:
-    from bentoml._internal.yatai_client import yatai_client
+def pull(
+    tag: t.Union[Tag, str],
+    *,
+    force: bool = False,
+    _cloud_client: BentoCloudClient = Provide[BentoMLContainer.bentocloud_client],
+) -> Model:
+    return _cloud_client.pull_model(tag, force=force)
 
-    return yatai_client.pull_model(tag, force=force)
+
+if t.TYPE_CHECKING:
+
+    class CreateKwargs(t.TypedDict):
+        module: str
+        api_version: str | None
+        signatures: t.Required[ModelSignaturesType]
+        labels: dict[str, t.Any] | None
+        options: ModelOptions | None
+        custom_objects: dict[str, t.Any] | None
+        external_modules: t.List[ModuleType] | None
+        metadata: dict[str, t.Any] | None
+        context: t.Required[ModelContext]
+        _model_store: t.NotRequired[ModelStore]
+
+
+@t.overload
+@contextmanager
+def create(
+    name: Tag | str, /, **attrs: t.Unpack[CreateKwargs]
+) -> t.Generator[Model, None, None]:
+    ...
+
+
+@t.overload
+@contextmanager
+def create(
+    name: Tag | str,
+    *,
+    module: str = ...,
+    api_version: str | None = ...,
+    signatures: ModelSignaturesType,
+    labels: dict[str, t.Any] | None = ...,
+    options: ModelOptions | None = ...,
+    custom_objects: dict[str, t.Any] | None = ...,
+    external_modules: t.List[ModuleType] | None = ...,
+    metadata: dict[str, t.Any] | None = ...,
+    context: ModelContext,
+    _model_store: ModelStore = ...,
+) -> t.Generator[Model, None, None]:
+    ...
 
 
 @inject
 @contextmanager
 def create(
-    name: str,
+    name: Tag | str,
     *,
     module: str = "",
     api_version: str | None = None,
@@ -257,12 +299,12 @@ def create(
         context=context,
     )
     external_modules = [] if external_modules is None else external_modules
-    imported_modules = []
+    imported_modules: t.List[ModuleType] = []
     try:
         res.enter_cloudpickle_context(external_modules, imported_modules)
         yield res
-    except Exception as e:
-        raise e
+    except Exception:
+        raise
     else:
         res.flush()
         res.save(_model_store)

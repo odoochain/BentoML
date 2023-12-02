@@ -4,17 +4,15 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from bentoml._internal.utils import LazyLoader
+from bentoml.grpc.utils import import_generated_stubs
 from bentoml.io import Text
-from bentoml.exceptions import BentoMLException
 
 if TYPE_CHECKING:
     from google.protobuf import wrappers_pb2
 
-    from bentoml.grpc.v1alpha1 import service_pb2 as pb
+    from bentoml.grpc.v1 import service_pb2 as pb
 else:
-    from bentoml.grpc.utils import import_generated_stubs
-    from bentoml._internal.utils import LazyLoader
-
     pb, _ = import_generated_stubs()
     wrappers_pb2 = LazyLoader("wrappers_pb2", globals(), "google.protobuf.wrappers_pb2")
 
@@ -23,24 +21,24 @@ def test_text_openapi_schema():
     assert Text().openapi_schema().type == "string"
 
 
-def test_invalid_init():
-    with pytest.raises(BentoMLException):
-        _ = Text(mime_type="asdf")
+def test_init():
+    assert Text().mime_type == "text/plain"
+    assert Text(content_type="text/event-stream").mime_type == "text/event-stream"
 
 
 def test_text_openapi_request_responses():
     mime_type = "text/plain"
 
     request_body = Text().openapi_request_body()
-    assert request_body.required
+    assert request_body["required"]
 
-    assert mime_type in request_body.content
+    assert mime_type in request_body["content"]
 
     responses = Text().openapi_responses()
 
-    assert responses.content
+    assert responses["content"]
 
-    assert mime_type in responses.content
+    assert mime_type in responses["content"]
 
 
 @pytest.mark.asyncio

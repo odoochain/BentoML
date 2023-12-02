@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-import typing as t
 import logging
+import typing as t
 from types import ModuleType
 from typing import TYPE_CHECKING
 
 import bentoml
 from bentoml import Tag
 
-from ..utils.pkg import get_pkg_version
 from ...exceptions import NotFound
 from ..models.model import Model
 from ..models.model import ModelContext
+from ..models.model import PartialKwargsModelOptions as ModelOptions
+from ..utils.pkg import get_pkg_version
 from .common.pytorch import torch
 
 if TYPE_CHECKING:
@@ -35,18 +36,20 @@ def get(tag_like: str | Tag) -> Model:
 
 def load_model(
     bentoml_model: str | Tag | Model,
-    device_id: t.Optional[str] = "cpu",
-) -> torch.ScriptModule:
+    device_id: str | None = "cpu",
+    *,
+    _extra_files: dict[str, t.Any] | None = None,
+) -> torch.ScriptModule | tuple[torch.ScriptModule, dict[str, t.Any]]:
     """
     Load a model from BentoML local modelstore with given name.
 
     Args:
-        tag (:code:`Union[str, Tag]`):
+        tag:
             Tag of a saved model in BentoML local modelstore.
-        device_id (:code:`str`, `optional`):
-            Optional devices to put the given model on. Refers to https://pytorch.org/docs/stable/tensor_attributes.html#torch.torch.device
-        model_store (:mod:`~bentoml._internal.models.store.ModelStore`, default to :mod:`BentoMLContainer.model_store`):
-            BentoML modelstore, provided by DI Container.
+        device_id:
+            Optional devices to put the given model on. Refer to https://pytorch.org/docs/stable/tensor_attributes.html#torch.torch.device
+        _extra_files:
+            A dictionary of file names and a empty string. See https://pytorch.org/docs/stable/generated/torch.jit.load.html.
 
     Returns:
         :obj:`torch.ScriptModule`: an instance of :obj:`torch.ScriptModule` from BentoML modelstore.
@@ -66,12 +69,17 @@ def load_model(
             f"Model {bentoml_model.tag} was saved with module {bentoml_model.info.module}, not loading with {MODULE_NAME}."
         )
     weight_file = bentoml_model.path_of(MODEL_FILENAME)
-    model: torch.ScriptModule = torch.jit.load(weight_file, map_location=device_id)  # type: ignore[reportPrivateImportUsage]
+
+    model: torch.ScriptModule = torch.jit.load(
+        weight_file,
+        map_location=device_id,
+        _extra_files=_extra_files,
+    )
     return model
 
 
 def save_model(
-    name: str,
+    name: Tag | str,
     model: torch.ScriptModule,
     *,
     signatures: ModelSignaturesType | None = None,
@@ -81,6 +89,7 @@ def save_model(
     metadata: t.Dict[str, t.Any] | None = None,
     _framework_name: str = "torchscript",
     _module_name: str = MODULE_NAME,
+    _extra_files: dict[str, t.Any] | None = None,
 ) -> bentoml.Model:
     """
     Save a model instance to BentoML modelstore.
@@ -112,8 +121,6 @@ def save_model(
 
         import bentoml
         import torch
-
-        TODO(jiang)
     """
     if not isinstance(model, (torch.ScriptModule, torch.jit.ScriptModule)):
         raise TypeError(f"Given model ({model}) is not a torch.ScriptModule.")
@@ -130,11 +137,17 @@ def save_model(
         framework_name=_framework_name,
         framework_versions=framework_versions,
     )
+    if _extra_files is not None:
+        if metadata is None:
+            metadata = {}
+        metadata["_extra_files"] = [f for f in _extra_files]
 
     if signatures is None:
         signatures = {"__call__": {"batchable": False}}
         logger.info(
-            f"Using the default model signature ({signatures}) for model {name}."
+            'Using the default model signature for torchscript (%s) for model "%s".',
+            signatures,
+            name,
         )
 
     with bentoml.models.create(
@@ -145,12 +158,13 @@ def save_model(
         signatures=signatures,
         custom_objects=custom_objects,
         external_modules=external_modules,
-        options=None,
+        options=ModelOptions(),
         context=context,
         metadata=metadata,
     ) as bento_model:
-        weight_file = bento_model.path_of(MODEL_FILENAME)
-        torch.jit.save(model, weight_file)  # type: ignore
+        torch.jit.save(
+            model, bento_model.path_of(MODEL_FILENAME), _extra_files=_extra_files
+        )
         return bento_model
 
 
@@ -158,21 +172,25 @@ def get_runnable(bento_model: Model):
     """
     Private API: use :obj:`~bentoml.Model.to_runnable` instead.
     """
-    from .common.pytorch import partial_class
     from .common.pytorch import PytorchModelRunnable
     from .common.pytorch import make_pytorch_runnable_method
+    from .common.pytorch import partial_class
+
+    partial_kwargs: t.Dict[str, t.Any] = bento_model.info.options.partial_kwargs  # type: ignore
+    model_runnable_class = partial_class(
+        PytorchModelRunnable,
+        bento_model=bento_model,
+        loader=load_model,
+    )
 
     for method_name, options in bento_model.info.signatures.items():
-        PytorchModelRunnable.add_method(
-            make_pytorch_runnable_method(method_name),
+        method_partial_kwargs = partial_kwargs.get(method_name)
+        model_runnable_class.add_method(
+            make_pytorch_runnable_method(method_name, method_partial_kwargs),
             name=method_name,
             batchable=options.batchable,
             batch_dim=options.batch_dim,
             input_spec=options.input_spec,
             output_spec=options.output_spec,
         )
-    return partial_class(
-        PytorchModelRunnable,
-        bento_model=bento_model,
-        loader=load_model,
-    )
+    return model_runnable_class

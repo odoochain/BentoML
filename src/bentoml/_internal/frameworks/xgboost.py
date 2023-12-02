@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import logging
 import os
 import typing as t
-import logging
 from types import ModuleType
 from typing import TYPE_CHECKING
 
@@ -11,13 +11,13 @@ import numpy as np
 
 import bentoml
 from bentoml import Tag
-from bentoml.models import ModelOptions
-from bentoml.exceptions import NotFound
-from bentoml.exceptions import InvalidArgument
 from bentoml.exceptions import BentoMLException
+from bentoml.exceptions import InvalidArgument
 from bentoml.exceptions import MissingDependencyException
-from bentoml._internal.models.model import ModelContext
+from bentoml.exceptions import NotFound
+from bentoml.models import ModelOptions
 
+from ..models.model import ModelContext
 from ..utils.pkg import get_pkg_version
 
 if TYPE_CHECKING:
@@ -30,9 +30,7 @@ try:
     import xgboost as xgb
 except ImportError:  # pragma: no cover
     raise MissingDependencyException(
-        "xgboost is required in order to use module `bentoml.xgboost`, install "
-        "xgboost with `pip install xgboost`. For more information, refers to "
-        "https://xgboost.readthedocs.io/en/latest/install.html"
+        "'xgboost' is required in order to use module 'bentoml.xgboost', install xgboost with 'pip install xgboost'. For more information, refer to https://xgboost.readthedocs.io/en/latest/install.html"
     )
 
 try:
@@ -117,7 +115,8 @@ def load_model(
     else:
         if model_api_version != "v2":
             logger.warning(
-                f"Got an XGBoost model with an unsupported version '{model_api_version}, unexpected errors may occur."
+                "Got an XGBoost model with an unsupported version '%s', unexpected errors may occur.",
+                model_api_version,
             )
         model_class = t.cast(XGBoostOptions, bento_model.info.options).model_class
         if model_class is None:
@@ -143,7 +142,7 @@ def load_model(
 
 
 def save_model(
-    name: str,
+    name: Tag | str,
     model: xgb.Booster | xgb.XGBModel,
     *,
     signatures: dict[str, ModelSignatureDict] | None = None,
@@ -217,12 +216,14 @@ def save_model(
     )
 
     if signatures is None:
-        logger.info(
-            'Using default model signature `{"predict": {"batchable": False}}` for XGBoost model'
-        )
         signatures = {
             "predict": {"batchable": False},
         }
+        logger.info(
+            'Using the default model signature for xgboost (%s) for model "%s".',
+            signatures,
+            name,
+        )
 
     with bentoml.models.create(
         name,
@@ -285,13 +286,15 @@ def get_runnable(bento_model: bentoml.Model) -> t.Type[bentoml.Runnable]:
             self: XGBoostRunnable,
             input_data: ext.NpNDArray
             | ext.PdDataFrame,  # TODO: add support for DMatrix
+            *args: t.Any,
+            **kwargs: t.Any,
         ) -> ext.NpNDArray:
             if isinstance(self.model, xgb.Booster):
                 inp = xgb.DMatrix(input_data)
             else:
                 inp = input_data
 
-            res = self.predict_fns[method_name](inp)
+            res = self.predict_fns[method_name](inp, *args, **kwargs)
             return np.asarray(res)  # type: ignore (incomplete np types)
 
         XGBoostRunnable.add_method(
