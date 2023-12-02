@@ -3,7 +3,7 @@
 0. Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+pip install  -i https://mirrors.cloud.tencent.com/pypi/simple -r requirements.txt
 ```
 
 1. Train and save model:
